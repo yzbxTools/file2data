@@ -38,8 +38,8 @@ def merge_images_annotations(json_files: List[str], output_file: str) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge images and annotations from multiple COCO JSON files.")
-    parser.add_argument("json_files", type=str, nargs='+', help="List of paths to COCO JSON files")
-    parser.add_argument("output_file", type=str, help="Path to the output merged COCO JSON file")
+    parser.add_argument("--json_files", type=str, nargs='+', help="List of paths to COCO JSON files")
+    parser.add_argument("--output_file", type=str, help="Path to the output merged COCO JSON file")
     args = parser.parse_args()
 
     merge_images_annotations(args.json_files, args.output_file)
