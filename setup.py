@@ -1,12 +1,14 @@
 from setuptools import setup, find_packages
 
+def read_requirements():
+    with open('requirements.txt', 'r') as f:
+        return f.read().splitlines()
+
 setup(
     name='file2data',
-    version='0.1.0',
+    version='0.1.1',
     packages=find_packages(),
-    install_requires=[
-        # Add your project dependencies here
-    ],
+    install_requires=read_requirements(),
     entry_points={
         'console_scripts': [
             # Add your console scripts here
@@ -17,7 +19,7 @@ setup(
     description='dataset loader tools for computer vision',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/yourusername/file2data',
+    url='https://github.com/youdaoyzbx/file2data',
     classifiers=[
         'Programming Language :: Python :: 3',
         'License :: OSI Approved :: MIT License',
