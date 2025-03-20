@@ -52,7 +52,7 @@ def merge_all(json_files: List[str], img_dirs: List[str], output_file: str) -> N
         ann_id_offset = max(ann["id"] for ann in merged_coco["annotations"]) + 1
         cat_id_offset = max(cat["id"] for cat in merged_coco["categories"]) + 1
 
-    save_json(merged_coco, output_file)
+    save_json(output_file, merged_coco)
 
 
 if __name__ == "__main__":
