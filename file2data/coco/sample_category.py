@@ -27,8 +27,8 @@ def sample_categories(coco_file: str, output_file: str, sample_size: int) -> Non
         'categories': sampled_categories
     }
 
-    with open(output_file, 'w') as f:
-        json.dump(sampled_coco, f)
+    with open(output_file, "w") as f:
+        json.dump(sampled_coco, f, indent=2)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sample categories with related images and annotations from a COCO JSON file.")

@@ -89,7 +89,7 @@ def save_file(file_path: str, data: Any) -> None:
 
         elif file_suffix == "json":
             with open(file_path, "w") as file:
-                json.dump(data, file)
+                json.dump(data, file, indent=2)
 
         elif file_suffix == "txt":
             with open(file_path, "w") as file:

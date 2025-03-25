@@ -48,7 +48,7 @@ def dedup_images(coco_file: str, output_file: str, method: str = 'file_name') ->
     }
 
     with open(output_file, 'w') as f:
-        json.dump(deduped_coco, f)
+        json.dump(deduped_coco, f, indent=2)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Deduplicate images in a COCO JSON file.")

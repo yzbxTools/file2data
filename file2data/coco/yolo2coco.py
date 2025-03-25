@@ -280,7 +280,7 @@ def main():
 
     # 保存COCO格式数据
     with open(args.output, "w") as f:
-        json.dump(coco_data, f, indent=4)
+        json.dump(coco_data, f, indent=2)
 
     print(f"转换完成! COCO格式数据已保存到: {args.output}")
     print(f"统计信息:")

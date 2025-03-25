@@ -44,7 +44,7 @@ def merge_images_annotations(
             ann_id_offset = max(ann["id"] for ann in merged_coco["annotations"]) + 1
 
     with open(output_file, "w") as f:
-        json.dump(merged_coco, f)
+        json.dump(merged_coco, f, indent=2)
 
 
 if __name__ == "__main__":
