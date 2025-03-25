@@ -25,6 +25,7 @@ from pathlib import Path
 import concurrent.futures
 import threading
 import imagesize  # 导入imagesize库进行快速图像尺寸读取
+import datetime
 
 
 def parse_args():
@@ -115,8 +116,6 @@ def process_image(args):
             "file_name": img_file,
             "width": img_width,
             "height": img_height,
-            "license": 1,
-            "date_captured": "2023",
         }
 
         # 为递归目录结构处理标签路径
@@ -191,11 +190,14 @@ def yolo_to_coco(
     # 构建COCO格式数据
     coco_data = {
         "info": {
+            "root_dir": root_dir,
+            "img_dir": img_dir,
+            "label_dir": label_dir,
             "description": "Converted from YOLO format",
             "version": "1.0",
-            "year": 2023,
+            "year": datetime.datetime.now().year,
             "contributor": "YOLO to COCO converter",
-            "date_created": "2023",
+            "date_created": datetime.datetime.now().strftime("%Y-%m-%d"),
         },
         "licenses": [{"id": 1, "name": "Unknown", "url": "Unknown"}],
         "images": [],
