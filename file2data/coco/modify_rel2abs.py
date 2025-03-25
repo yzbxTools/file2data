@@ -4,7 +4,6 @@ modify relative path to absolute path in coco dataset
 
 import os
 import os.path as osp
-from tqdm import tqdm
 
 from file2data import load_json, save_json
 import argparse
