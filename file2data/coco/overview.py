@@ -45,7 +45,7 @@ def analyze_coco(coco_data):
         if osp.isabs(img["file_name"]):
             # first two level directory
             seps = osp.dirname(img['file_name']).split(osp.sep)
-            img_root = osp.sep.join(seps[:2])
+            img_root = osp.sep.join(seps[:3])
         else:
             img_root = '.'
         if img_root not in img_root_map:

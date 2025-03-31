@@ -41,7 +41,8 @@ def remap_img_root(coco_file: str, old_roots: list[str], new_roots: list[str], o
                     root_map = f"{old_root} -> {new_root}"
                     if root_map not in root_map_test:
                         root_map_test.add(root_map)
-                        assert osp.exists(img_info["file_name"]), f"remap image root {root_map} failed: {img_info['file_name']} not exists"
+                        if not osp.exists(img_info["file_name"]):
+                            print(f"remap image root {root_map} failed: {img_info['file_name']} not exists")
                     break
         # 处理相对路径
         else:
