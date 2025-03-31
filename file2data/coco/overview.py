@@ -8,6 +8,7 @@ coco数据集概览
 
 import argparse
 import os
+import os.path as osp
 import pandas as pd
 from file2data import load_json
 
@@ -37,6 +38,20 @@ def analyze_coco(coco_data):
     # 图片统计
     images = coco_data["images"]
     results["图片总数"] = len(images)
+
+    # 图片根目录统计
+    img_root_map = {}
+    for img in images:
+        if osp.isabs(img["file_name"]):
+            # first two level directory
+            seps = osp.dirname(img['file_name']).split(osp.sep)
+            img_root = osp.sep.join(seps[:2])
+        else:
+            img_root = '.'
+        if img_root not in img_root_map:
+            img_root_map[img_root] = 0
+        img_root_map[img_root] += 1
+    results["图片根目录统计"] = img_root_map
 
     # 标注统计
     annotations = coco_data["annotations"]
@@ -130,6 +145,7 @@ def print_results(results):
     print(f"类别总数: {results['类别总数']}")
     print(f"图片总数: {results['图片总数']}")
     print(f"标注总数: {results['标注总数']}")
+    print(f"图片根目录统计: {results['图片根目录统计']}")
 
     print(f"\n📸 图片分析")
     print(f"正样本数量: {results['正样本数量']}")
@@ -169,6 +185,7 @@ def export_to_excel(results, output_file):
                     "正样本数量",
                     "负样本数量",
                     "正样本比例",
+                    "图片根目录统计",
                 ],
                 "值": [
                     results["类别总数"],
@@ -177,6 +194,7 @@ def export_to_excel(results, output_file):
                     results["正样本数量"],
                     results["负样本数量"],
                     results["正样本比例"],
+                    results["图片根目录统计"],
                 ],
             }
         )
