@@ -2,11 +2,23 @@
 remap image root directory in coco dataset
 
 usage:
-python remap_img_root.py \
+python3 file2data/coco/remap_img_root.py \
     --coco_file <coco_file> \
     --old_roots <old_root1> <old_root2> \
     --new_root <new_root1> <new_root2>  \
     --output_file <output_file>
+
+# {'/team/drive-1': 18000, '/mnt/lakedata_azure': 1340, '/data_tmp/cloth_wire_data': 23, '/ssd/data_zx': 20637}
+/team/drive-1 -> /team/drive-1
+/mnt/lakedata_azure -> /team/drive-1/ssd/mnt/lakedata_azure
+/data_tmp/cloth_wire_data -> /team/drive-1/data_ap/train/all_images
+/ssd/data_zx -> /team/drive-1/ssd/data_zx
+
+python3 file2data/coco/remap_img_root.py \
+    --coco_file /mnt/fsx/workspace_robin/datasets/ap59_zx5_train_sampled_40000.json \
+    --old_roots /mnt/lakedata_azure /data_tmp/cloth_wire_data /ssd/data_zx \
+    --new_roots /team/drive-1/ssd/mnt/lakedata_azure /team/drive-1/data_ap/train/all_images /team/drive-1/ssd/data_zx \
+    --output_file /mnt/fsx/workspace_robin/datasets/ap59_zx5_train_sampled_40000_remap.json
 """
 
 import argparse
