@@ -3,7 +3,7 @@ test image loading speed in disk
 
 usage:
 python3 file2data/utils/test_disk_speed.py \
-    --image_txt_file <image_txt_file> \
+    <image_txt_file> \
     --num_threads <num_threads> \
     --num_samples <num_samples>
 
@@ -32,10 +32,10 @@ def test_disk_speed(img_list: List[str], num_samples: int, num_threads: int) -> 
     """测试磁盘读取速度"""
     if num_samples > len(img_list):
         num_samples = len(img_list)
-        
+
     # 随机采样
     sampled_imgs = random.sample(img_list, num_samples)
-    
+
     start_time = time.time()
     if num_threads > 1:
         parallelise(load_image, sampled_imgs, num_workers=num_threads)
@@ -43,24 +43,25 @@ def test_disk_speed(img_list: List[str], num_samples: int, num_threads: int) -> 
         for img_path in tqdm(sampled_imgs, desc="加载图片"):
             load_image(img_path)
     end_time = time.time()
-    
+
     total_time = end_time - start_time
     avg_time = total_time / num_samples
     print(f"\n总耗时: {total_time:.2f}秒")
-    print(f"平均每张图片耗时: {avg_time*1000:.2f}毫秒") 
+    print(f"平均每张图片耗时: {avg_time*1000:.2f}毫秒")
+    print(f"每秒处理图片数量: {num_samples / total_time:.2f}张")
 
 
 def main():
     parser = argparse.ArgumentParser(description="测试磁盘图片加载速度")
-    parser.add_argument("--image_txt_file", type=str, help="包含图片路径的txt文件")
-    parser.add_argument("--num_samples", type=int, help="要测试的图片数量")
-    parser.add_argument("--num_threads", type=int, help="线程数")
+    parser.add_argument("image_txt_file", type=str, help="包含图片路径的txt文件")
+    parser.add_argument("--num_samples", type=int, help="要测试的图片数量", default=1000)
+    parser.add_argument("--num_threads", type=int, help="线程数", default=1)
     args = parser.parse_args()
 
     # 读取图片列表
     with open(args.image_txt_file, "r") as f:
         img_list = [line.strip() for line in f.readlines()]
-    
+
     test_disk_speed(img_list, args.num_samples, args.num_threads)
 
 
