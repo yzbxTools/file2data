@@ -20,7 +20,7 @@ import os
 
 def lfs_restore(img_path: str) -> bool:
     """hsm_restore img_path to fsx_img_dir"""
-    cmd = f"lfs hsm_restore {img_path}"
+    cmd = f"lfs hsm_restore '{img_path}'"
     try:
         subprocess.run(cmd, shell=True, check=True)
     except Exception as e:
