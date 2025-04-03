@@ -11,8 +11,15 @@ python3 file2data/aws/init_fsx.py \
 
 import argparse
 from file2data import load_json, save_json
+from file2data.utils import parallelise
 import os.path as osp
+import os
 
+
+def lfs_restore(img_path: str) -> None:
+    """restore img_path to fsx_img_dir"""
+    cmd = f"lfs restore {img_path}"
+    os.system(cmd)
 
 def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str) -> None:
     """初始化fsx文件系统（lustre）
@@ -20,17 +27,21 @@ def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file:
     coco_data = load_json(coco_file)
     success_count = 0
     fail_count = 0
+
+    fsx_files = []
     for img_info in coco_data['images']:
         img_path = img_info['file_name']
         if osp.isabs(img_path) and img_path.startswith(origin_img_dir):
             fsx_img_path = osp.join(fsx_img_dir, osp.relpath(img_path, origin_img_dir))
             success_count += 1
             img_info['file_name'] = fsx_img_path
+            fsx_files.append(fsx_img_path)
         else:
             if fail_count < 3:
                 print(f"img_path: {img_path} is not abs path or not start with {origin_img_dir}")
             fail_count += 1
 
+    parallelise(lfs_restore, fsx_files, num_workers=10)
     print(f"success_count: {success_count}, fail_count: {fail_count}")
     print(f'success_rate: {success_count / (success_count + fail_count)}')
     if output_file:
