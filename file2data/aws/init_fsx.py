@@ -6,7 +6,8 @@ python3 file2data/aws/init_fsx.py \
     --coco_file <coco_file> \
     --origin_img_dir <origin_img_root> \
     --fsx_img_dir <fsx_img_root> \
-    --output_file <output_file>
+    --output_file <output_file> \
+    --num_workers <num_workers>
 """
 
 import argparse
@@ -21,7 +22,7 @@ def lfs_restore(img_path: str) -> None:
     cmd = f"lfs hsm_restore {img_path}"
     os.system(cmd)
 
-def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str) -> None:
+def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str, num_workers: int) -> None:
     """初始化fsx文件系统（lustre）
     """
     coco_data = load_json(coco_file)
@@ -41,7 +42,7 @@ def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file:
                 print(f"img_path: {img_path} is not abs path or not start with {origin_img_dir}")
             fail_count += 1
 
-    parallelise(lfs_restore, fsx_files, num_workers=10)
+    parallelise(lfs_restore, fsx_files, num_workers=num_workers)
     print(f"success_count: {success_count}, fail_count: {fail_count}")
     print(f'success_rate: {success_count / (success_count + fail_count)}')
     if output_file:
@@ -55,5 +56,6 @@ if __name__ == "__main__":
     parser.add_argument("--origin_img_dir", type=str, default="/")
     parser.add_argument("--fsx_img_dir", type=str, default="/")
     parser.add_argument("--output_file", type=str, default=None)
+    parser.add_argument("--num_workers", type=int, default=8)
     args = parser.parse_args()
-    init_fsx(args.coco_file, args.origin_img_dir, args.fsx_img_dir, args.output_file)
+    init_fsx(args.coco_file, args.origin_img_dir, args.fsx_img_dir, args.output_file, args.num_workers)
