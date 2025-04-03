@@ -14,13 +14,19 @@ import argparse
 from file2data import load_json, save_json
 from file2data.utils import parallelise
 import os.path as osp
+import subprocess
 import os
 
 
-def lfs_restore(img_path: str) -> None:
+def lfs_restore(img_path: str) -> bool:
     """hsm_restore img_path to fsx_img_dir"""
     cmd = f"lfs hsm_restore {img_path}"
-    os.system(cmd)
+    try:
+        subprocess.run(cmd, shell=True, check=True)
+    except Exception as e:
+        print(f"error: {e}")
+        return False
+    return True
 
 def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str, num_workers: int) -> None:
     """初始化fsx文件系统（lustre）
