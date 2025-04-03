@@ -17,8 +17,8 @@ import os
 
 
 def lfs_restore(img_path: str) -> None:
-    """restore img_path to fsx_img_dir"""
-    cmd = f"lfs restore {img_path}"
+    """hsm_restore img_path to fsx_img_dir"""
+    cmd = f"lfs hsm_restore {img_path}"
     os.system(cmd)
 
 def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str) -> None:
