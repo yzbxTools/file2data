@@ -52,8 +52,8 @@ def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--coco_file", type=str, required=True)
-    parser.add_argument("--origin_img_dir", type=str, required=True, default="/")
-    parser.add_argument("--fsx_img_dir", type=str, required=True, default="/")
-    parser.add_argument("--output_file", type=str, required=False, default=None)
+    parser.add_argument("--origin_img_dir", type=str, default="/")
+    parser.add_argument("--fsx_img_dir", type=str, default="/")
+    parser.add_argument("--output_file", type=str, default=None)
     args = parser.parse_args()
     init_fsx(args.coco_file, args.origin_img_dir, args.fsx_img_dir, args.output_file)
