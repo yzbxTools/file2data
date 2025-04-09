@@ -1,10 +1,6 @@
 """
-remove invalid images and annotations from coco dataset
-
-invalid images: osp.exists(img_path) == False
-invalid annotations: ann['image_id'] not in invalid_img_ids
+remove image with specifix prefix
 """
-
 import os
 import os.path as osp
 from tqdm import tqdm
@@ -14,24 +10,14 @@ from file2data.utils import parallelise
 from functools import partial
 
 
-def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
+def check_img(img_info: dict, root_dirs: tuple[str]) -> tuple[bool, dict]:
     """
     check if image exists in root_dirs
     if not, set img_info['file_name'] to abs path
     """
     file_name = img_info["file_name"]
-    if osp.isabs(file_name):
-        if not osp.exists(file_name):
-            return False, img_info
-    else:
-        exist = False
-        for root_dir in root_dirs:
-            if osp.exists(osp.join(root_dir, file_name)):
-                img_info["file_name"] = osp.join(root_dir, file_name)
-                exist = True
-                break
-        if not exist:
-            return False, img_info
+    if file_name.startswith(root_dirs):
+        return False, img_info
 
     return True, img_info
         
@@ -41,10 +27,11 @@ def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str]) ->
     invalid_img_ids = set()
 
     # check if image exists in root_dirs
-    check_fun = partial(check_img, root_dirs=root_dirs)
+    check_fun = partial(check_img, root_dirs=tuple(root_dirs))
     check_results = parallelise(
         check_fun,
-        coco["images"]
+        coco["images"],
+        task_type="io_bound"
     )
     invalid_img_path = []
     for flag, img_info in tqdm(check_results):
@@ -79,7 +66,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--coco_file", type=str, required=True)
     parser.add_argument("--output_file", type=str, required=True)
-    parser.add_argument("--root_dirs", type=str, required=False, default=[], nargs="+")
+    parser.add_argument("--bad_root_dirs", type=str, required=False, default=[], nargs="+")
     args = parser.parse_args()
-    clean_img_and_ann(args.coco_file, args.output_file, args.root_dirs)
+    clean_img_and_ann(args.coco_file, args.output_file, args.bad_root_dirs)
     print(f"save to {args.output_file}")

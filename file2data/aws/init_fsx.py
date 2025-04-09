@@ -18,15 +18,15 @@ import subprocess
 import os
 
 
-def lfs_restore(img_path: str) -> bool:
+def lfs_restore(img_path: str) -> dict:
     """hsm_restore img_path to fsx_img_dir"""
     cmd = f"lfs hsm_restore '{img_path}'"
     try:
         subprocess.run(cmd, shell=True, check=True)
     except Exception as e:
         print(f"error: {e}")
-        return False
-    return True
+        return dict(success=False, img_path=img_path, error=str(e))
+    return dict(success=True, img_path=img_path)
 
 def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str, num_workers: int) -> None:
     """初始化fsx文件系统（lustre）
@@ -43,12 +43,24 @@ def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file:
             success_count += 1
             img_info['file_name'] = fsx_img_path
             fsx_files.append(fsx_img_path)
+        elif not osp.isabs(img_path):
+            fsx_img_path = osp.join(fsx_img_dir, img_path)
+            img_info['file_name'] = fsx_img_path
+            fsx_files.append(fsx_img_path)
         else:
-            if fail_count < 3:
-                print(f"img_path: {img_path} is not abs path or not start with {origin_img_dir}")
             fail_count += 1
+            if fail_count < 3:
+                print(f"error: {img_path} not in {origin_img_dir}")
 
-    parallelise(lfs_restore, fsx_files, num_workers=num_workers)
+    abs_fail_count = fail_count
+    results = parallelise(lfs_restore, fsx_files, num_workers=num_workers)
+    for result in results:
+        if result['success']:
+            success_count += 1
+        else:
+            fail_count += 1
+            if fail_count < abs_fail_count + 3:
+                print(f"error: {result['error']}")
     print(f"success_count: {success_count}, fail_count: {fail_count}")
     print(f'success_rate: {success_count / (success_count + fail_count)}')
     if output_file:
