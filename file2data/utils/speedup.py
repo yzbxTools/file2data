@@ -2,7 +2,6 @@
 speed up the process of list data
 """
 
-from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
