@@ -6,9 +6,9 @@ input:
 - prediction_file: coco format prediction file, contain only predictions
 
 features:
-1. select by image id
-2. filter by category names, select one or multiple
-3. filter by prediction scores, range from 0 to 1
+1. filter by category names, select one or multiple
+2. filter by prediction scores, range from 0 to 1
+3. filter image without target predictions, yes or no
 4. view page by page, show 4 rows with 3 columns per page.
 """
 
@@ -46,6 +46,8 @@ def get_args():
     parser.add_argument("--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions")
     args = parser.parse_args()
     return args
+
+
 # 设置页面配置
 st.set_page_config(
     page_title="预测结果可视化",
@@ -90,17 +92,16 @@ if data is not None:
 
     # 提取预测结果
     predictions = data.get("annotations", [])
+    img_id2preds = {}
+    for pred in predictions:
+        img_id = pred["image_id"]
+        if img_id not in img_id2preds:
+            img_id2preds[img_id] = []
+        img_id2preds[img_id].append(pred)
 
     # 侧边栏 - 过滤选项
     with st.sidebar:
         st.header("过滤选项")
-
-        # 图像ID选择
-        selected_image_id = st.selectbox(
-            "选择图像ID",
-            options=image_ids,
-            format_func=lambda x: f"ID: {x} - {images[x].get('file_name', 'Unknown')}",
-        )
 
         # 类别过滤
         selected_categories = st.multiselect(
@@ -112,21 +113,28 @@ if data is not None:
             "预测分数范围", min_value=0.0, max_value=1.0, value=(0.0, 1.0), step=0.05
         )
 
+        # 是否过滤无目标预测
+        filter_no_target = st.checkbox("过滤无目标预测", value=True)
+
     # 过滤预测结果
     filtered_predictions = [
         pred
         for pred in predictions
-        if pred["image_id"] == selected_image_id
-        and categories.get(pred["category_id"], "") in selected_categories
+        if categories.get(pred["category_id"], "") in selected_categories
         and min_score <= pred.get("score", 1.0) <= max_score
     ]
+
+    if filter_no_target:
+        filtered_image_ids = list(set([pred["image_id"] for pred in filtered_predictions]))
+    else:
+        filtered_image_ids = image_ids
 
     # 分页显示
     items_per_page = 12  # 4行3列
     total_pages = max(
         1,
-        len(filtered_predictions) // items_per_page
-        + (1 if len(filtered_predictions) % items_per_page > 0 else 0),
+        len(filtered_image_ids) // items_per_page
+        + (1 if len(filtered_image_ids) % items_per_page > 0 else 0),
     )
 
     current_page = st.sidebar.number_input(
@@ -135,11 +143,11 @@ if data is not None:
 
     # 显示当前页的预测结果
     start_idx = (current_page - 1) * items_per_page
-    end_idx = min(start_idx + items_per_page, len(filtered_predictions))
-    current_predictions = filtered_predictions[start_idx:end_idx]
+    end_idx = min(start_idx + items_per_page, len(filtered_image_ids))
+    current_image_ids = filtered_image_ids[start_idx:end_idx]
 
     # 显示图像和预测结果
-    if selected_image_id in images:
+    for selected_image_id in current_image_ids:
         image_info = images[selected_image_id]
         image_path = image_info.get("file_name", "")
 
@@ -161,7 +169,8 @@ if data is not None:
             st.image(img, caption=f"图像ID: {selected_image_id}", use_column_width=True)
 
             # 显示预测结果表格
-            if current_predictions:
+            if selected_image_id in img_id2preds:
+                current_predictions = img_id2preds[selected_image_id]
                 st.subheader(f"预测结果 (第 {current_page}/{total_pages} 页)")
 
                 # 创建预测结果表格
