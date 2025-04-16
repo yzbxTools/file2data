@@ -17,7 +17,7 @@ import json
 import os
 import numpy as np
 import pandas as pd
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from pathlib import Path
@@ -185,6 +185,21 @@ if data is not None:
                             draw = ImageDraw.Draw(img)
                             draw.text((10, 10), f"图像未找到: {image_path}", fill="red")
 
+                        # 为不同类别分配不同颜色
+                        category_colors = {}
+                        color_list = [
+                            "red",
+                            "blue",
+                            "green",
+                            "yellow",
+                            "purple",
+                            "orange",
+                            "cyan",
+                            "magenta",
+                            "lime",
+                            "pink",
+                        ]
+
                         # 显示预测结果
                         if selected_image_id in img_id2preds:
                             current_predictions = [
@@ -196,20 +211,52 @@ if data is not None:
                             ]
 
                             # draw bbox on image
-
                             for pred in current_predictions:
                                 bbox = pred.get("bbox", [0, 0, 0, 0])  # x,y,w,h
-                                bbox = [bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]  # x1,y1,x2,y2
-                                draw.rectangle(bbox, outline="red", width=2)
+                                bbox = [
+                                    bbox[0],
+                                    bbox[1],
+                                    bbox[0] + bbox[2],
+                                    bbox[1] + bbox[3],
+                                ]  # x1,y1,x2,y2
+
                                 category_name = categories.get(
                                     pred["category_id"], "Unknown"
                                 )
+
+                                # 为每个类别分配一个颜色
+                                if category_name not in category_colors:
+                                    # 循环使用颜色列表
+                                    color_idx = len(category_colors) % len(color_list)
+                                    category_colors[category_name] = color_list[
+                                        color_idx
+                                    ]
+
+                                color = category_colors[category_name]
+                                draw.rectangle(bbox, outline=color, width=2)
+
                                 score = pred.get("score", 1.0)
-                                draw.text(
-                                    (bbox[0], bbox[1]),
-                                    f"{category_name}: {score:.2f}",
-                                    fill="red",
-                                )
+                                # 使用PIL的ImageFont来设置更大的字体
+                                try:
+                                    # 尝试加载系统字体，如果失败则使用默认字体
+                                    try:
+                                        font = ImageFont.truetype("Arial", 16)
+                                    except IOError:
+                                        font = ImageFont.load_default(size=16)
+
+                                    draw.text(
+                                        (bbox[0], bbox[1]),
+                                        f"{category_name}: {score:.2f}",
+                                        fill=color,
+                                        font=font,
+                                    )
+                                except ImportError:
+                                    # 如果无法导入ImageFont，使用默认字体
+                                    draw.text(
+                                        (bbox[0], bbox[1]),
+                                        f"{category_name}: {score:.2f}",
+                                        fill=color,
+                                    )
 
                             st.image(
                                 img,
