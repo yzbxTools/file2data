@@ -40,7 +40,12 @@ def load_data(image_file, prediction_file):
         return data
     return None
 
-
+def get_args():
+    parser = argparse.ArgumentParser(description="COCO格式预测结果可视化")
+    parser.add_argument("--image_file", type=str, help="COCO格式JSON文件路径, 包含images和categories")
+    parser.add_argument("--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions")
+    args = parser.parse_args()
+    return args
 # 设置页面配置
 st.set_page_config(
     page_title="预测结果可视化",
@@ -62,8 +67,9 @@ with st.sidebar:
 
     # 或者通过命令行参数传入
     if len(sys.argv) > 1:
-        image_file = sys.argv[1]
-        prediction_file = sys.argv[2]
+        args = get_args()
+        image_file = args.image_file
+        prediction_file = args.prediction_file
     
     # 加载数据
     if image_file and prediction_file:
@@ -232,10 +238,7 @@ else:
 
 # 命令行参数解析
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="COCO格式预测结果可视化")
-    parser.add_argument("--image_file", type=str, help="COCO格式JSON文件路径, 包含images和categories")
-    parser.add_argument("--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions")
-    args = parser.parse_args()
+    args = get_args()
 
     if args.prediction_file and args.image_file:
         if os.path.exists(args.prediction_file) and os.path.exists(args.image_file):

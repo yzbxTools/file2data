@@ -25,10 +25,10 @@ pip install -r requirements.txt
 1. 通过命令行参数指定JSON文件：
 
 ```bash
-streamlit run view_prediction.py -- --file path/to/your/predictions.json
+streamlit run visualize/view_prediction.py -- --image_file path/to/images.json --prediction_file path/to/predictions.json
 ```
 
-2. 直接运行，然后通过界面上传文件：
+2. 直接运行，然后通过界面输入文件路径：
 
 ```bash
 streamlit run view_prediction.py
