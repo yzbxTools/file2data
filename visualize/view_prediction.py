@@ -15,11 +15,7 @@ features:
 import streamlit as st
 import json
 import os
-import numpy as np
-import pandas as pd
 from PIL import Image, ImageDraw, ImageFont
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from pathlib import Path
 import argparse
 import sys
@@ -90,7 +86,20 @@ if data is not None:
     # 提取类别信息
     categories = {cat["id"]: cat["name"] for cat in data.get("categories", [])}
     category_names = list(categories.values())
-
+    # 为不同类别分配不同颜色
+    category_colors = {}
+    color_list = [
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "purple",
+        "orange",
+        "cyan",
+        "magenta",
+        "lime",
+        "pink",
+    ]
     # 提取图像信息
     images = {img["id"]: img for img in data.get("images", [])}
     image_ids = list(images.keys())
@@ -184,21 +193,6 @@ if data is not None:
                             )
                             draw = ImageDraw.Draw(img)
                             draw.text((10, 10), f"图像未找到: {image_path}", fill="red")
-
-                        # 为不同类别分配不同颜色
-                        category_colors = {}
-                        color_list = [
-                            "red",
-                            "blue",
-                            "green",
-                            "yellow",
-                            "purple",
-                            "orange",
-                            "cyan",
-                            "magenta",
-                            "lime",
-                            "pink",
-                        ]
 
                         # 显示预测结果
                         if selected_image_id in img_id2preds:
