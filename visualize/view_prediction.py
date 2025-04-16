@@ -240,9 +240,9 @@ if data is not None:
                                 try:
                                     # 尝试加载系统字体，如果失败则使用默认字体
                                     try:
-                                        font = ImageFont.truetype("Arial", 16)
+                                        font = ImageFont.truetype("Arial", 48)
                                     except IOError:
-                                        font = ImageFont.load_default(size=16)
+                                        font = ImageFont.load_default(size=48)
 
                                     draw.text(
                                         (bbox[0], bbox[1]),
