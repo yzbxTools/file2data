@@ -191,15 +191,16 @@ def draw_bbox(image, bbox, category_name, color, score=None):
         label += f": {score:.2f}"
 
     # 计算文本大小
+    font_size = 2
     (text_width, text_height), _ = cv2.getTextSize(
-        label, cv2.FONT_HERSHEY_SIMPLEX, 2, 1
+        label, cv2.FONT_HERSHEY_SIMPLEX, font_size, 1
     )
 
     # 绘制标签背景
     cv2.rectangle(image, (x, y - text_height - 5), (x + text_width, y), color, -1)
 
     # 绘制标签文本
-    cv2.putText(image, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+    cv2.putText(image, label, (x, y - 5), cv2.FONT_HERSHEY_SIMPLEX, font_size, (0, 0, 0), 1)
 
     return image
 
@@ -243,6 +244,14 @@ def visualize_image(
 
 
 def main():
+    # 设置页面配置
+    st.set_page_config(
+        page_title="FP/FN结果可视化",
+        page_icon="🔍",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+
     st.title("FP/FN结果可视化")
 
     # 获取命令行参数
@@ -271,7 +280,6 @@ def main():
 
     # 3. 类别过滤
     category_names = get_category_names(data["categories"])
-    cat_id2name = {cat["id"]: cat["name"] for cat in data["categories"]}
     selected_categories = st.sidebar.multiselect(
         "选择类别", category_names, default=category_names
     )
