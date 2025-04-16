@@ -2,7 +2,8 @@
 use streamlit to show prediction results
 
 input:
-- coco format json file path from terminal or from streamlit text input
+- image_file: coco format image file, contain images and categories.
+- prediction_file: coco format prediction file, contain only predictions
 
 features:
 1. select by image id
@@ -23,6 +24,23 @@ from pathlib import Path
 import argparse
 import sys
 
+
+def load_data(image_file, prediction_file):
+    if image_file is not None and prediction_file is not None:
+        with open(image_file, "r") as f:
+            image_data = json.load(f)
+        with open(prediction_file, "r") as f:
+            prediction_data = json.load(f)
+
+        data = {
+            "images": image_data["images"],
+            "categories": image_data["categories"],
+            "annotations": prediction_data,
+        }
+        return data
+    return None
+
+
 # 设置页面配置
 st.set_page_config(
     page_title="预测结果可视化",
@@ -38,23 +56,21 @@ st.title("COCO格式预测结果可视化")
 with st.sidebar:
     st.header("数据输入")
 
-    # 文件上传
-    uploaded_file = st.file_uploader("上传COCO格式JSON文件", type=["json"])
+    # 文件路径输入
+    image_file = st.text_input("输入COCO格式JSON文件路径, 包含images和categories")
+    prediction_file = st.text_input("输入COCO格式JSON文件路径, 只包含predictions")
 
     # 或者通过命令行参数传入
     if len(sys.argv) > 1:
-        file_path = sys.argv[1]
-        if os.path.exists(file_path):
-            with open(file_path, "r") as f:
-                data = json.load(f)
-        else:
-            st.error(f"文件不存在: {file_path}")
-            data = None
-    elif uploaded_file is not None:
-        data = json.load(uploaded_file)
+        image_file = sys.argv[1]
+        prediction_file = sys.argv[2]
+    
+    # 加载数据
+    if image_file and prediction_file:
+        data = load_data(image_file, prediction_file)
     else:
         data = None
-        st.info("请上传COCO格式的JSON文件或通过命令行参数指定文件路径")
+        st.info("请输入COCO格式的JSON文件或通过命令行参数指定文件路径")
 
 # 主界面
 if data is not None:
@@ -217,13 +233,14 @@ else:
 # 命令行参数解析
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="COCO格式预测结果可视化")
-    parser.add_argument("--file", type=str, help="COCO格式JSON文件路径")
+    parser.add_argument("--image_file", type=str, help="COCO格式JSON文件路径, 包含images和categories")
+    parser.add_argument("--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions")
     args = parser.parse_args()
 
-    if args.file:
-        if os.path.exists(args.file):
-            with open(args.file, "r") as f:
-                data = json.load(f)
+    if args.prediction_file and args.image_file:
+        if os.path.exists(args.prediction_file) and os.path.exists(args.image_file):
+            # 命令行参数已处理，Streamlit会自动运行应用程序
+            pass
         else:
-            print(f"文件不存在: {args.file}")
+            print(f"文件不存在")
             sys.exit(1)
