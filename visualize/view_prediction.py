@@ -40,10 +40,15 @@ def load_data(image_file, prediction_file):
         return data
     return None
 
+
 def get_args():
     parser = argparse.ArgumentParser(description="COCO格式预测结果可视化")
-    parser.add_argument("--image_file", type=str, help="COCO格式JSON文件路径, 包含images和categories")
-    parser.add_argument("--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions")
+    parser.add_argument(
+        "--image_file", type=str, help="COCO格式JSON文件路径, 包含images和categories"
+    )
+    parser.add_argument(
+        "--prediction_file", type=str, help="COCO格式JSON文件路径, 只包含predictions"
+    )
     args = parser.parse_args()
     return args
 
@@ -72,7 +77,7 @@ with st.sidebar:
         args = get_args()
         image_file = args.image_file
         prediction_file = args.prediction_file
-    
+
     # 加载数据
     if image_file and prediction_file:
         data = load_data(image_file, prediction_file)
@@ -92,7 +97,7 @@ if data is not None:
 
     # 提取预测结果
     predictions = data.get("annotations", [])
-    img_id2preds = {}
+    img_id2preds: dict = {}
     for pred in predictions:
         img_id = pred["image_id"]
         if img_id not in img_id2preds:
@@ -125,7 +130,9 @@ if data is not None:
     ]
 
     if filter_no_target:
-        filtered_image_ids = list(set([pred["image_id"] for pred in filtered_predictions]))
+        filtered_image_ids = list(
+            set([pred["image_id"] for pred in filtered_predictions])
+        )
     else:
         filtered_image_ids = image_ids
 
@@ -146,88 +153,71 @@ if data is not None:
     end_idx = min(start_idx + items_per_page, len(filtered_image_ids))
     current_image_ids = filtered_image_ids[start_idx:end_idx]
 
-    # 显示图像和预测结果
-    for selected_image_id in current_image_ids:
-        image_info = images[selected_image_id]
-        image_path = image_info.get("file_name", "")
+    # 创建4行3列的网格布局
+    st.subheader(f"预测结果 (第 {current_page}/{total_pages} 页)")
 
-        # 尝试加载图像
-        try:
-            if os.path.exists(image_path):
-                img = Image.open(image_path)
-            else:
-                # 如果找不到图像，创建一个空白图像
-                img = Image.new(
-                    "RGB",
-                    (image_info.get("width", 800), image_info.get("height", 600)),
-                    color="white",
-                )
-                draw = ImageDraw.Draw(img)
-                draw.text((10, 10), f"图像未找到: {image_path}", fill="red")
+    # 使用列布局创建网格
+    for row in range(4):
+        cols = st.columns(3)
+        for col in range(3):
+            idx = row * 3 + col
+            if idx < len(current_image_ids):
+                selected_image_id = current_image_ids[idx]
+                image_info = images[selected_image_id]
+                image_path = image_info.get("file_name", "")
 
-            # 显示图像
-            st.image(img, caption=f"图像ID: {selected_image_id}", use_column_width=True)
+                with cols[col]:
+                    # 尝试加载图像
+                    try:
+                        if os.path.exists(image_path):
+                            img = Image.open(image_path)
+                            draw = ImageDraw.Draw(img)
+                        else:
+                            # 如果找不到图像，创建一个空白图像
+                            img = Image.new(
+                                "RGB",
+                                (
+                                    image_info.get("width", 800),
+                                    image_info.get("height", 600),
+                                ),
+                                color="white",
+                            )
+                            draw = ImageDraw.Draw(img)
+                            draw.text((10, 10), f"图像未找到: {image_path}", fill="red")
 
-            # 显示预测结果表格
-            if selected_image_id in img_id2preds:
-                current_predictions = img_id2preds[selected_image_id]
-                st.subheader(f"预测结果 (第 {current_page}/{total_pages} 页)")
+                        # 显示预测结果
+                        if selected_image_id in img_id2preds:
+                            current_predictions = [
+                                pred
+                                for pred in img_id2preds[selected_image_id]
+                                if categories.get(pred["category_id"], "")
+                                in selected_categories
+                                and min_score <= pred.get("score", 1.0) <= max_score
+                            ]
 
-                # 创建预测结果表格
-                results_data = []
-                for pred in current_predictions:
-                    category_name = categories.get(pred["category_id"], "Unknown")
-                    score = pred.get("score", 0.0)
-                    bbox = pred.get("bbox", [0, 0, 0, 0])
+                            # draw bbox on image
 
-                    results_data.append(
-                        {
-                            "类别": category_name,
-                            "分数": f"{score:.4f}",
-                            "边界框": f"[{bbox[0]:.1f}, {bbox[1]:.1f}, {bbox[2]:.1f}, {bbox[3]:.1f}]",
-                        }
-                    )
+                            for pred in current_predictions:
+                                bbox = pred.get("bbox", [0, 0, 0, 0])
+                                draw.rectangle(bbox, outline="red", width=2)
+                                category_name = categories.get(
+                                    pred["category_id"], "Unknown"
+                                )
+                                score = pred.get("score", 1.0)
+                                draw.text(
+                                    (bbox[0], bbox[1]),
+                                    f"{category_name}: {score:.2f}",
+                                    fill="red",
+                                )
 
-                st.dataframe(pd.DataFrame(results_data))
+                            st.image(
+                                img,
+                                caption=f"图像ID: {selected_image_id}",
+                                use_container_width=True,
+                            )
 
-                # 可视化边界框
-                fig, ax = plt.subplots(1, 1, figsize=(10, 10))
-                ax.imshow(np.array(img))
-
-                for pred in current_predictions:
-                    bbox = pred.get("bbox", [0, 0, 0, 0])
-                    category_name = categories.get(pred["category_id"], "Unknown")
-                    score = pred.get("score", 0.0)
-
-                    # 创建矩形
-                    rect = patches.Rectangle(
-                        (bbox[0], bbox[1]),
-                        bbox[2],
-                        bbox[3],
-                        linewidth=2,
-                        edgecolor="r",
-                        facecolor="none",
-                    )
-                    ax.add_patch(rect)
-
-                    # 添加标签
-                    ax.text(
-                        bbox[0],
-                        bbox[1] - 5,
-                        f"{category_name}: {score:.2f}",
-                        color="white",
-                        fontsize=12,
-                        bbox=dict(facecolor="red", alpha=0.7),
-                    )
-
-                ax.axis("off")
-                st.pyplot(fig)
-            else:
-                st.warning("没有符合过滤条件的预测结果")
-        except Exception as e:
-            st.error(f"处理图像时出错: {str(e)}")
-    else:
-        st.error(f"找不到图像ID: {selected_image_id}")
+                    except Exception as e:
+                        st.error(f"处理图像时出错: {str(e)}")
 
 # 如果没有数据，显示使用说明
 else:
@@ -237,11 +227,11 @@ else:
 
     1. 上传COCO格式的JSON文件，或通过命令行参数指定文件路径
     2. 使用侧边栏的过滤选项筛选预测结果:
-       - 选择特定图像ID
        - 选择一个或多个类别
        - 设置预测分数范围
+       - 是否过滤无目标预测
     3. 使用分页控件浏览预测结果
-    4. 查看图像上的边界框可视化
+    4. 查看图像上的预测结果表格
     """
     )
 
