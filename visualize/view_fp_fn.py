@@ -301,21 +301,14 @@ def main():
         img_id2anns[ann["image_id"]].append(ann)
 
     # 按类别与score 过滤预测结果
-    filtered_predictions = []
-    for pred in data["predictions"]:
-        # 过滤类别
-        cat_id = pred["category_id"]
-        category_name = cat_id2name.get(cat_id, "unknown")
-        if category_name not in selected_categories:
-            continue
-
-        # 过滤分数
-        if pred["score"] < score_threshold:
-            continue
-
-        filtered_predictions.append(pred)
     selected_cat_ids = [
         cat["id"] for cat in data["categories"] if cat["name"] in selected_categories
+    ]
+    filtered_predictions = [
+        pred
+        for pred in data["predictions"]
+        if pred["score"] >= score_threshold
+        and pred["category_id"] in selected_cat_ids
     ]
     filtered_annotations = [
         ann for ann in data["gt_annotations"] if ann["category_id"] in selected_cat_ids
@@ -349,7 +342,7 @@ def main():
         tp_count = len(value["tp"])
         fp_count = len(value["fp"])
         fn_count = len(value["fn"])
-        st.write(f"{key}: {tp_count}, {fp_count}, {fn_count}")
+        st.write(f"{key}: tp: {tp_count}, fp: {fp_count}, fn: {fn_count}")
         precision = tp_count / (tp_count + fp_count)
         recall = tp_count / (tp_count + fn_count)
         f1 = 2 * precision * recall / (precision + recall + 1e-6)
@@ -368,9 +361,8 @@ def main():
         current_image_ids = filtered_image_ids[start_idx:end_idx]
 
         # 显示图像
-        for i in range(0, len(current_image_ids), 2):
+        for image_id in current_image_ids:
             col1, col2 = st.columns(2)
-            image_id = current_image_ids[i]
             image_info = img_id2info[image_id]
             gt_anns = [
                 ann
