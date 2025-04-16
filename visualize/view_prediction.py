@@ -199,7 +199,7 @@ if data is not None:
 
                             for pred in current_predictions:
                                 bbox = pred.get("bbox", [0, 0, 0, 0])  # x,y,w,h
-                                bbox[2:4] += bbox[0:2]  # x1,y1,x2,y2
+                                bbox = [bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]]  # x1,y1,x2,y2
                                 draw.rectangle(bbox, outline="red", width=2)
                                 category_name = categories.get(
                                     pred["category_id"], "Unknown"
