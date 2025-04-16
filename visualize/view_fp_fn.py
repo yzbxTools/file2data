@@ -215,7 +215,7 @@ def visualize_image(
         return None, None
 
     # 转换为RGB
-    image = cv2.cvtColor(image, cv2.TICOLOR_BGR2RGB)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     # 创建GT和预测的可视化
     gt_image = image.copy()
