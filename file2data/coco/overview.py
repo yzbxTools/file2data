@@ -15,7 +15,7 @@ from file2data import load_json
 
 def parse_args():
     parser = argparse.ArgumentParser(description="coco数据集概览")
-    parser.add_argument("--coco_file", type=str, required=True, help="coco数据集文件")
+    parser.add_argument("coco_file", type=str, help="coco数据集文件")
     return parser.parse_args()
 
 

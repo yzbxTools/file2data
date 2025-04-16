@@ -37,9 +37,9 @@ def parallelise(
             )  # Use all available cores by default, fallback to 1
         else:
             num_workers = max(1, num_workers)  # Ensure at least 1 worker
-        if chunksize <= 1:
-            chunksize = max(
-                1, len(data) // (num_workers * 4)
+        if chunksize < 1:
+            chunksize = min(
+                max(1, len(data) // (num_workers * 4)), 50
             )  # Dynamically calculate chunksize
         with Pool(processes=num_workers) as pool:
             # Use imap_unordered for faster processing if order is not important
@@ -55,8 +55,8 @@ def parallelise(
             num_workers = (os.cpu_count() or 1) * 2  # 防止None值与整数相乘
         else:
             num_workers = max(1, num_workers)
-        if chunksize <= 1:
-            chunksize = max(1, len(data) // (num_workers * 4))
+        if chunksize < 1:
+            chunksize = min(max(1, len(data) // (num_workers * 4)), 50)
         with ThreadPool(processes=num_workers) as pool:
             results = list(
                 tqdm(

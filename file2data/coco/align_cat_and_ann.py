@@ -11,6 +11,7 @@ python3 file2data/coco/align_cat_and_ann.py \
 import argparse
 from tqdm import tqdm
 from file2data import load_json, save_json
+from loguru import logger
 
 
 def align_cat_and_ann(
@@ -27,7 +28,14 @@ def align_cat_and_ann(
 
     input_id2ref_id = {}
     for input_id, input_cat_name in input_id2cat_name.items():
-        ref_id = cat_name2ref_id[input_cat_name]
+        if input_cat_name not in cat_name2ref_id:
+            logger.warning(
+                f"category {input_cat_name} not found in reference categories, "
+                f"skipping category {input_id}"
+            )
+            ref_id = -1
+        else:
+            ref_id = cat_name2ref_id[input_cat_name]
         input_id2ref_id[input_id] = ref_id
 
     for ann in tqdm(input_coco["annotations"]):
