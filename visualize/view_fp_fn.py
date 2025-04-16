@@ -338,13 +338,16 @@ def main():
 
     # show the number of tp, fp, fn for image and bbox in table
     st.subheader(f"TP/FP/FN统计 with score threshold {score_threshold}")
+    st.write(f"total images: {len(filtered_image_ids)}")
+    st.write(f"total gt bboxes: {len(filtered_annotations)}")
+    st.write(f"total pred bboxes: {len(filtered_predictions)}")
     for key, value in fp_fn_results.items():
         tp_count = len(value["tp"])
         fp_count = len(value["fp"])
         fn_count = len(value["fn"])
         st.write(f"{key}: tp: {tp_count}, fp: {fp_count}, fn: {fn_count}")
-        precision = tp_count / (tp_count + fp_count)
-        recall = tp_count / (tp_count + fn_count)
+        precision = tp_count / (tp_count + fp_count + 1e-6)
+        recall = tp_count / (tp_count + fn_count + 1e-6)
         f1 = 2 * precision * recall / (precision + recall + 1e-6)
         st.write(f"precision: {precision:.2f}, recall: {recall:.2f}, f1: {f1:.2f}")
 
