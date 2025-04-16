@@ -192,7 +192,7 @@ def draw_bbox(image, bbox, category_name, color, score=None):
 
     # 计算文本大小
     (text_width, text_height), _ = cv2.getTextSize(
-        label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1
+        label, cv2.FONT_HERSHEY_SIMPLEX, 2, 1
     )
 
     # 绘制标签背景
@@ -394,12 +394,12 @@ def main():
             # 第一列：GT
             with col1:
                 if gt_image is not None:
-                    st.image(gt_image, use_column_width=True)
+                    st.image(gt_image, use_container_width=True)
 
             # 第二列：预测
             with col2:
                 if pred_image is not None:
-                    st.image(pred_image, use_column_width=True)
+                    st.image(pred_image, use_container_width=True)
     else:
         st.warning("没有符合条件的图像")
 
