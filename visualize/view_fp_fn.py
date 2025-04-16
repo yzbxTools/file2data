@@ -251,8 +251,8 @@ def main():
     # 文件路径输入
     if args.image_file is None or args.prediction_file is None:
         st.sidebar.header("输入文件路径")
-        image_file = st.sidebar.text_input("输入图像文件路径", type="default")
-        prediction_file = st.sidebar.text_input("输入预测文件路径", type="default")
+        image_file_path = st.sidebar.text_input("输入图像文件路径", type="default")
+        prediction_file_path = st.sidebar.text_input("输入预测文件路径", type="default")
     else:
         image_file_path = args.image_file
         prediction_file_path = args.prediction_file

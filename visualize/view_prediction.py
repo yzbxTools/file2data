@@ -87,7 +87,7 @@ if data is not None:
     categories = {cat["id"]: cat["name"] for cat in data.get("categories", [])}
     category_names = list(categories.values())
     # 为不同类别分配不同颜色
-    category_colors = {}
+    category_colors: dict[str, str] = {}
     color_list = [
         "red",
         "blue",
@@ -183,16 +183,7 @@ if data is not None:
                             draw = ImageDraw.Draw(img)
                         else:
                             # 如果找不到图像，创建一个空白图像
-                            img = Image.new(
-                                "RGB",
-                                (
-                                    image_info.get("width", 800),
-                                    image_info.get("height", 600),
-                                ),
-                                color="white",
-                            )
-                            draw = ImageDraw.Draw(img)
-                            draw.text((10, 10), f"图像未找到: {image_path}", fill="red")
+                            continue
 
                         # 显示预测结果
                         if selected_image_id in img_id2preds:
