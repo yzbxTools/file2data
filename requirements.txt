@@ -7,3 +7,5 @@ pandas>=1.3.0
 jsonlines
 loguru
 pyyaml
+streamlit>=1.22.0
+matplotlib>=3.5.0
