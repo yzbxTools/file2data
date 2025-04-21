@@ -1,16 +1,36 @@
 """
 clean the mmdet model weights, keep the latest and best checkpoint
+
+example:
+- best_coco_bbox_mAP_epoch_20.pth
+- epoch_14.pth
+- step_10000.pth
 """
 
 import os
 import glob
 import argparse
+import re
 
 def get_newest_files(file_list):
     """
     get the newest file from the file list
     """
     return max(file_list, key=os.path.getctime)
+
+def get_latest_ckpt(file_list):
+    """
+    get the latest checkpoint from the file list
+    """
+    if len(file_list) == 0:
+        return None
+
+    if "epoch" in file_list[0]:
+        return max(file_list, key=lambda x: int(re.search(r'epoch_(\d+)', x).group(1)))
+    elif "step" in file_list[0]:
+        return max(file_list, key=lambda x: int(re.search(r'step_(\d+)', x).group(1)))
+    else:
+        return None
 
 def clean_mmdet_weights(model_dir, recursive=False, print_only=False):
     """
@@ -19,8 +39,19 @@ def clean_mmdet_weights(model_dir, recursive=False, print_only=False):
     if not recursive:
         best_ckpts = glob.glob(os.path.join(model_dir, "best*.pth"))
         loop_ckpts = glob.glob(os.path.join(model_dir, "epoch_*.pth")) + glob.glob(os.path.join(model_dir, "step_*.pth"))
-        newest_best_ckpt = get_newest_files(best_ckpts)
-        newest_loop_ckpt = get_newest_files(loop_ckpts)
+        if len(best_ckpts) > 0:
+            newest_best_ckpt = get_newest_files(best_ckpts)
+            tmp = get_latest_ckpt(best_ckpts)
+            assert tmp == newest_best_ckpt, f"newest_best_ckpt: {newest_best_ckpt}, tmp: {tmp}"
+        else:
+            newest_best_ckpt = None
+        if len(loop_ckpts) > 0:
+            newest_loop_ckpt = get_newest_files(loop_ckpts)
+            tmp = get_latest_ckpt(loop_ckpts)
+            assert tmp == newest_loop_ckpt, f"newest_loop_ckpt: {newest_loop_ckpt}, tmp: {tmp}"
+        else:
+            newest_loop_ckpt = None
+        
         for ckpt in best_ckpts:
             if ckpt != newest_best_ckpt:
                 if print_only:
