@@ -11,6 +11,7 @@ import os
 import glob
 import argparse
 import re
+from loguru import logger
 
 def get_newest_files(file_list):
     """
@@ -52,6 +53,8 @@ def clean_mmdet_weights(model_dir, recursive=False, print_only=False):
         else:
             newest_loop_ckpt = None
         
+        logger.info(f"newest_best_ckpt: {newest_best_ckpt}")
+        logger.info(f"newest_loop_ckpt: {newest_loop_ckpt}")
         for ckpt in best_ckpts:
             if ckpt != newest_best_ckpt:
                 if print_only:
