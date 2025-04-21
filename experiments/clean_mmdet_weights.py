@@ -43,13 +43,17 @@ def clean_mmdet_weights(model_dir, recursive=False, print_only=False):
         if len(best_ckpts) > 0:
             newest_best_ckpt = get_newest_files(best_ckpts)
             tmp = get_latest_ckpt(best_ckpts)
-            assert tmp == newest_best_ckpt, f"newest_best_ckpt: {newest_best_ckpt}, tmp: {tmp}"
+            if tmp != newest_best_ckpt:
+                logger.warning(f"newest_best_ckpt: {newest_best_ckpt}, tmp: {tmp}")
+                newest_best_ckpt = tmp
         else:
             newest_best_ckpt = None
         if len(loop_ckpts) > 0:
             newest_loop_ckpt = get_newest_files(loop_ckpts)
             tmp = get_latest_ckpt(loop_ckpts)
-            assert tmp == newest_loop_ckpt, f"newest_loop_ckpt: {newest_loop_ckpt}, tmp: {tmp}"
+            if tmp != newest_loop_ckpt:
+                logger.warning(f"newest_loop_ckpt: {newest_loop_ckpt}, tmp: {tmp}")
+                newest_loop_ckpt = tmp
         else:
             newest_loop_ckpt = None
         
