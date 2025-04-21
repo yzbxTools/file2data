@@ -45,7 +45,7 @@ def clean_mmdet_weights(model_dir, recursive=False, print_only=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_dir", type=str, default="")
-    parser.add_argument("--print_only", type=bool, default=False, action="store_true")
-    parser.add_argument("--recursive", type=bool, default=False, action="store_true")
+    parser.add_argument("--print_only", default=False, action="store_true")
+    parser.add_argument("--recursive", default=False, action="store_true")
     args = parser.parse_args()
     clean_mmdet_weights(args.model_dir, args.recursive, args.print_only)
