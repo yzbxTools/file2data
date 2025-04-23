@@ -35,6 +35,7 @@ def test_disk_speed(img_list: List[str], num_samples: int, num_threads: int) -> 
         num_samples = len(img_list)
 
     # 随机采样
+    random.seed(42)
     sampled_imgs = random.sample(img_list, num_samples)
 
     start_time = time.time()
