@@ -71,13 +71,13 @@ def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
     return is_valid, img_info
 
 
-def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str]) -> None:
+def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str], chunksize: int = 100) -> None:
     coco = load_json(coco_file)
     invalid_img_ids = set()
 
     # check if image exists in root_dirs
     check_fun = partial(check_img, root_dirs=root_dirs)
-    check_results = parallelise(check_fun, coco["images"], chunksize=1000, task_type="io_bound")
+    check_results = parallelise(check_fun, coco["images"], chunksize=chunksize, task_type="io_bound")
     invalid_img_path = []
     for flag, img_info in tqdm(check_results):
         if not flag:
@@ -112,6 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--coco_file", type=str, required=True)
     parser.add_argument("--output_file", type=str, required=True)
     parser.add_argument("--root_dirs", type=str, required=False, default=[], nargs="+")
+    parser.add_argument("--chunksize", type=int, required=False, default=16)
     args = parser.parse_args()
-    clean_img_and_ann(args.coco_file, args.output_file, args.root_dirs)
+    clean_img_and_ann(args.coco_file, args.output_file, args.root_dirs, args.chunksize)
     print(f"save to {args.output_file}")
