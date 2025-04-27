@@ -15,7 +15,7 @@ from file2data.utils import parallelise
 from functools import partial
 
 
-def verify_image(img_path: str, verbose: bool = True) -> bool:
+def verify_image(img_path: str, verbose: bool = False) -> bool:
     if osp.exists(img_path):
         if osp.getsize(img_path) < 1024:
             if verbose:
