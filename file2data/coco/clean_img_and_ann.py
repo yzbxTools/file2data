@@ -8,10 +8,42 @@ invalid annotations: ann['image_id'] not in invalid_img_ids
 import os
 import os.path as osp
 from tqdm import tqdm
+from PIL import Image
 import argparse
 from file2data import load_json, save_json
 from file2data.utils import parallelise
 from functools import partial
+
+
+def verify_image(img_path: str, verbose: bool = True) -> bool:
+    if osp.exists(img_path):
+        if osp.getsize(img_path) < 1024:
+            if verbose:
+                print(f"Image file size too small: {img_path}")
+            return False
+
+        try:
+            # verify images
+            im = Image.open(img_path)
+            im.verify()  # PIL verify
+            shape = im.size
+            assert (shape[0] > 9) & (shape[1] > 9), f"image size {shape} <10 pixels"
+            if im.format.lower() in ("jpg", "jpeg"):
+                with open(img_path, "rb") as f:
+                    f.seek(-2, 2)
+                    if f.read() != b"\xff\xd9":  # corrupt JPEG
+                        if verbose:
+                            print(f"find corrupt JPEG: {img_path}")
+                        return False
+        except Exception as e:
+            if verbose:
+                print(f"Error in load image: {img_path}, {e}")
+            return False
+        return True
+    else:
+        if verbose:
+            print(f"Image not found: {img_path}")
+        return False
 
 
 def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
@@ -33,8 +65,11 @@ def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
         if not exist:
             return False, img_info
 
-    return True, img_info
-        
+    # check if image_path is a valid image
+    file_name = img_info["file_name"]
+    is_valid = verify_image(file_name)
+    return is_valid, img_info
+
 
 def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str]) -> None:
     coco = load_json(coco_file)
@@ -42,10 +77,7 @@ def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str]) ->
 
     # check if image exists in root_dirs
     check_fun = partial(check_img, root_dirs=root_dirs)
-    check_results = parallelise(
-        check_fun,
-        coco["images"]
-    )
+    check_results = parallelise(check_fun, coco["images"])
     invalid_img_path = []
     for flag, img_info in tqdm(check_results):
         if not flag:
