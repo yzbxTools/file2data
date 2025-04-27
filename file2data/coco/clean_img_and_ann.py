@@ -77,7 +77,7 @@ def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str]) ->
 
     # check if image exists in root_dirs
     check_fun = partial(check_img, root_dirs=root_dirs)
-    check_results = parallelise(check_fun, coco["images"])
+    check_results = parallelise(check_fun, coco["images"], chunksize=1000, task_type="io_bound")
     invalid_img_path = []
     for flag, img_info in tqdm(check_results):
         if not flag:
