@@ -13,6 +13,7 @@ import argparse
 from file2data import load_json, save_json
 from file2data.utils import parallelise
 from functools import partial
+from fuzzywuzzy import fuzz, process
 
 
 def verify_image(img_path: str, verbose: bool = False) -> bool:
@@ -71,7 +72,16 @@ def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
     return is_valid, img_info
 
 
-def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str], chunksize: int = 100) -> None:
+def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root_dirs: list[str], chunksize: int = 100) -> None:
+    """
+    clean invalid images and annotations from coco dataset
+    coco_file: path to coco dataset
+    output_file: path to output coco dataset
+    img_database:
+        - {file_name: {md5_value: file_path}}
+    root_dirs: list of root directories
+    chunksize: number of images to process in parallel
+    """
     coco = load_json(coco_file)
     invalid_img_ids = set()
 
@@ -79,10 +89,30 @@ def clean_img_and_ann(coco_file: str, output_file: str, root_dirs: list[str], ch
     check_fun = partial(check_img, root_dirs=root_dirs)
     check_results = parallelise(check_fun, coco["images"], chunksize=chunksize, task_type="io_bound")
     invalid_img_path = []
+
+    replace_img_number = 0
+    reject_img_number = 0
     for flag, img_info in tqdm(check_results):
         if not flag:
-            invalid_img_ids.add(img_info["id"])
-            invalid_img_path.append(img_info["file_name"])
+            base_name = osp.basename(img_info["file_name"])
+            if base_name in img_database:
+                file_choices = list(img_database[base_name].values())
+                file_query = img_info["file_name"]
+                best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.partial_ratio)
+                if best_match_ratio > 80:
+                    replace_img_number += 1
+                    if replace_img_number < 3:
+                        print(f"replace {img_info['file_name']} with {best_match}")
+                    img_info["file_name"] = best_match
+                else:
+                    reject_img_number += 1
+                    if reject_img_number < 3:
+                        print(f"reject match {best_match_ratio} for {img_info['file_name']}")
+                    invalid_img_ids.add(img_info["id"])
+                    invalid_img_path.append(img_info["file_name"])
+            else:
+                invalid_img_ids.add(img_info["id"])
+                invalid_img_path.append(img_info["file_name"])
 
     invalid_ratio = len(invalid_img_ids) / len(coco["images"])
     print(f"invalid_img_ids: {len(invalid_img_ids)}, ratio: {invalid_ratio:.2%}")
@@ -111,8 +141,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--coco_file", type=str, required=True)
     parser.add_argument("--output_file", type=str, required=True)
+    parser.add_argument("--img_database_file", type=str, required=False, default="", help="path to img database")
     parser.add_argument("--root_dirs", type=str, required=False, default=[], nargs="+")
     parser.add_argument("--chunksize", type=int, required=False, default=16)
     args = parser.parse_args()
-    clean_img_and_ann(args.coco_file, args.output_file, args.root_dirs, args.chunksize)
+    if args.img_database_file:
+        database = load_json(args.img_database_file)
+    else:
+        database = {}
+
+    clean_img_and_ann(args.coco_file, args.output_file, database, args.root_dirs, args.chunksize)
     print(f"save to {args.output_file}")
