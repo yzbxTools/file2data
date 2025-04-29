@@ -29,6 +29,16 @@ def sample_categories(coco_file: str, output_file: str, sampled_categories: List
     with open(output_file, "w") as f:
         json.dump(sampled_coco, f, indent=2)
 
+    origin_img_num = len(coco['images'])
+    sampled_img_num = len(sampled_images)
+    print(f"origin_img_num: {origin_img_num}, sampled_img_num: {sampled_img_num}")
+    origin_ann_num = len(coco['annotations'])
+    sampled_ann_num = len(sampled_annotations)
+    print(f"origin_ann_num: {origin_ann_num}, sampled_ann_num: {sampled_ann_num}")
+    print(f"sampled_img_num / origin_img_num: {sampled_img_num / origin_img_num}")
+    print(f"sampled_ann_num / origin_ann_num: {sampled_ann_num / origin_ann_num}")
+    print(f"save to {output_file}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sample categories with related images and annotations from a COCO JSON file.")
     parser.add_argument("--coco_file", type=str, help="Path to the COCO JSON file")
