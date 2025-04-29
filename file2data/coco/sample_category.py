@@ -23,7 +23,7 @@ def sample_categories(coco_file: str, output_file: str, sampled_categories: List
     sampled_coco = {
         'images': sampled_images,
         'annotations': sampled_annotations,
-        'categories': sampled_categories
+        'categories': [cat for cat in coco['categories'] if cat['id'] in sampled_category_ids]
     }
 
     with open(output_file, "w") as f:
