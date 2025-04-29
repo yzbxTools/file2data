@@ -92,6 +92,9 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
 
     replace_img_number = 0
     reject_img_number = 0
+    # file_name: matched_file_name
+    replace_img_map = {}
+    reject_img_map = {}
     for flag, img_info in tqdm(check_results):
         if not flag:
             base_name = osp.basename(img_info["file_name"])
@@ -100,11 +103,13 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
                 file_query = img_info["file_name"]
                 best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.partial_ratio)
                 if best_match_ratio > 80:
+                    replace_img_map[img_info["file_name"]] = best_match
                     replace_img_number += 1
                     if replace_img_number < 3:
                         print(f"replace {img_info['file_name']} with {best_match}")
                     img_info["file_name"] = best_match
                 else:
+                    reject_img_map[img_info["file_name"]] = best_match
                     reject_img_number += 1
                     if reject_img_number < 3:
                         print(f"reject match {best_match_ratio} for {img_info['file_name']}")
@@ -134,7 +139,21 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
         with open(invalid_img_txt, "w") as f:
             for img_path in invalid_img_path:
                 f.write(img_path + "\n")
-        print(f"invalid_img_txt: {invalid_img_txt}")
+        print(f"invalid_img_txt: {invalid_img_txt}, num: {len(invalid_img_path)}")
+
+    if len(replace_img_map) > 0:
+        replace_img_txt = osp.splitext(output_file)[0] + "_replace_img.txt"
+        with open(replace_img_txt, "w") as f:
+            for img_path, matched_img_path in replace_img_map.items():
+                f.write(f"{img_path} {matched_img_path}\n")
+        print(f"replace_img_txt: {replace_img_txt}, num: {len(replace_img_map)}")
+    
+    if len(reject_img_map) > 0:
+        reject_img_txt = osp.splitext(output_file)[0] + "_reject_img.txt"
+        with open(reject_img_txt, "w") as f:
+            for img_path, matched_img_path in reject_img_map.items():
+                f.write(f"{img_path} {matched_img_path}\n")
+        print(f"reject_img_txt: {reject_img_txt}, num: {len(reject_img_map)}")
 
 
 if __name__ == "__main__":
