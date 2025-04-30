@@ -6,6 +6,7 @@ python3 file2data/coco/remap_img_root.py \
     --coco_file <coco_file> \
     --old_roots <old_root1> <old_root2> \
     --new_root <new_root1> <new_root2>  \
+    --relative_path [relative_path] \
     --output_file <output_file>
 
 # {'/team/drive-1': 18000, '/mnt/lakedata_azure': 1340, '/data_tmp/cloth_wire_data': 23, '/ssd/data_zx': 20637}
@@ -33,6 +34,7 @@ def remap_img_root(
     old_roots: list[str],
     new_roots: list[str],
     img_dirs: list[str],
+    relative_path: str,
     output_file: str,
 ) -> None:
     """重映射COCO数据集中图片的根目录路径
@@ -46,6 +48,7 @@ def remap_img_root(
     coco = load_json(coco_file)
 
     rel_img_count = 0
+    abs2rel_count = 0
     root_map_test = set()
     for img_info in tqdm(coco["images"], desc="remap image root"):
         file_name = img_info["file_name"]
@@ -73,16 +76,29 @@ def remap_img_root(
                                 f"remap image root {root_map} failed: {img_info['file_name']} not exists"
                             )
                     break
-        # 处理相对路径
+            
+            # 将绝对路径统一转换为相对路径，便于更换根目录
+            if relative_path:
+                file_name = img_info["file_name"]
+                if file_name.startswith(relative_path):
+                    abs2rel_count += 1
+                    img_info["file_name"] = osp.relpath(file_name, relative_path)
+
+        # 处理找不到的相对路径
         else:
             rel_img_count += 1
             if rel_img_count < 3:
                 print(f"rel_img_count: {rel_img_count}, file_name: {file_name}")
 
+    total_img_count = len(coco["images"])
     if rel_img_count > 0:
-        print(f"final rel_img_count: {rel_img_count}")
+        print(f"final rel_img_count: {rel_img_count}, ratio: {rel_img_count / total_img_count:.2%}")
 
-    os.makedirs(osp.dirname(output_file), exist_ok=True)
+    if relative_path:
+        print(f"final abs2rel_count: {abs2rel_count}, ratio: {abs2rel_count / total_img_count:.2%}")
+
+    if osp.dirname(output_file):
+        os.makedirs(osp.dirname(output_file), exist_ok=True)
     save_json(output_file, coco)
 
 
@@ -102,10 +118,11 @@ if __name__ == "__main__":
         required=True,
         help="转换相对路径的图片根目录列表",
     )
+    parser.add_argument("--relative_path", type=str, required=False, default="", help="相对路径")
     parser.add_argument("--output_file", type=str, required=True, help="输出文件路径")
     args = parser.parse_args()
 
     remap_img_root(
-        args.coco_file, args.old_roots, args.new_roots, args.img_dirs, args.output_file
+        args.coco_file, args.old_roots, args.new_roots, args.img_dirs, args.relative_path, args.output_file
     )
     print(f"保存到 {args.output_file}")
