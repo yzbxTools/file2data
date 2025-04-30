@@ -72,7 +72,7 @@ def check_img(img_info: dict, root_dirs: list[str]) -> tuple[bool, dict]:
     return is_valid, img_info
 
 
-def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root_dirs: list[str], chunksize: int = 100) -> None:
+def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, img_database_dir: str, root_dirs: list[str], chunksize: int = 100) -> None:
     """
     clean invalid images and annotations from coco dataset
     coco_file: path to coco dataset
@@ -80,6 +80,7 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
     img_database:
         - {file_name: {md5_value: file_path}}   # new format from img_txt.py
         - {file_name: {maps: {md5_value: file_path}}}  # old format from img_txt.py
+    img_database_dir: root image directory for path in img_database_file
     root_dirs: list of root directories
     chunksize: number of images to process in parallel
     """
@@ -105,14 +106,16 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
                 else:
                     file_choices = list(img_database[base_name].values())
 
+                # threshold = base_name
                 file_query = img_info["file_name"]
-                best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.partial_ratio)
-                if best_match_ratio > 80:
+                base_name_ratio = fuzz.token_sort_ratio(base_name, file_query)
+                best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.token_sort_ratio)
+                if best_match_ratio > base_name_ratio:
                     replace_img_map[img_info["file_name"]] = best_match
                     replace_img_number += 1
                     if replace_img_number < 3:
                         print(f"replace {img_info['file_name']} with {best_match}")
-                    img_info["file_name"] = best_match
+                    img_info["file_name"] = osp.join(img_database_dir, best_match)
                 else:
                     reject_img_map[img_info["file_name"]] = best_match
                     reject_img_number += 1
@@ -166,6 +169,7 @@ if __name__ == "__main__":
     parser.add_argument("--coco_file", type=str, required=True)
     parser.add_argument("--output_file", type=str, required=True)
     parser.add_argument("--img_database_file", type=str, required=False, default="", help="path to img database")
+    parser.add_argument("--img_database_dir", type=str, required=False, default="", help="root image directory for path in img_database_file")
     parser.add_argument("--root_dirs", type=str, required=False, default=[], nargs="+")
     parser.add_argument("--chunksize", type=int, required=False, default=16)
     args = parser.parse_args()
@@ -174,5 +178,5 @@ if __name__ == "__main__":
     else:
         database = {}
 
-    clean_img_and_ann(args.coco_file, args.output_file, database, args.root_dirs, args.chunksize)
+    clean_img_and_ann(args.coco_file, args.output_file, database, args.img_database_dir, args.root_dirs, args.chunksize)
     print(f"save to {args.output_file}")
