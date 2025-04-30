@@ -99,9 +99,9 @@ def process_image_txt(
         file_name = result["file_name"]
         if file_name in file_name_to_info:
             # 合并maps
-            file_name_to_info[file_name]["maps"].update(result["maps"])
+            file_name_to_info[file_name].update(result["maps"])
         else:
-            file_name_to_info[file_name] = result
+            file_name_to_info[file_name] = result["maps"]
 
     # 保存结果
     save_json(output_file, file_name_to_info)

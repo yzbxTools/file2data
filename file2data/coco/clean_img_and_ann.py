@@ -78,7 +78,8 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
     coco_file: path to coco dataset
     output_file: path to output coco dataset
     img_database:
-        - {file_name: {md5_value: file_path}}
+        - {file_name: {md5_value: file_path}}   # new format from img_txt.py
+        - {file_name: {maps: {md5_value: file_path}}}  # old format from img_txt.py
     root_dirs: list of root directories
     chunksize: number of images to process in parallel
     """
@@ -99,7 +100,11 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, root
         if not flag:
             base_name = osp.basename(img_info["file_name"])
             if base_name in img_database:
-                file_choices = list(img_database[base_name].values())
+                if 'maps' in img_database[base_name]:
+                    file_choices = list(img_database[base_name]['maps'].values())
+                else:
+                    file_choices = list(img_database[base_name].values())
+
                 file_query = img_info["file_name"]
                 best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.partial_ratio)
                 if best_match_ratio > 80:
