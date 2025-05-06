@@ -13,7 +13,7 @@ import argparse
 from file2data import load_json, save_json
 from file2data.utils import parallelise
 from functools import partial
-from fuzzywuzzy import fuzz, process
+from thefuzz import fuzz, process
 
 
 def verify_image(img_path: str, verbose: bool = False) -> bool:
@@ -108,8 +108,8 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, img_
 
                 # threshold = base_name
                 file_query = img_info["file_name"]
-                base_name_ratio = fuzz.token_sort_ratio(base_name, file_query)
-                best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.token_sort_ratio)
+                base_name_ratio = fuzz.ratio(file_query, base_name)
+                best_match, best_match_ratio = process.extractOne(file_query, file_choices, scorer=fuzz.ratio)
                 if best_match_ratio > base_name_ratio:
                     replace_img_map[img_info["file_name"]] = best_match
                     replace_img_number += 1
