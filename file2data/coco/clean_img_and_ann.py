@@ -120,7 +120,7 @@ def clean_img_and_ann(coco_file: str, output_file: str, img_database: dict, img_
                     reject_img_map[img_info["file_name"]] = best_match
                     reject_img_number += 1
                     if reject_img_number < 3:
-                        print(f"reject match {best_match_ratio} for {img_info['file_name']}")
+                        print(f"reject match {best_match} for {img_info['file_name']}")
                     invalid_img_ids.add(img_info["id"])
                     invalid_img_path.append(img_info["file_name"])
             else:
