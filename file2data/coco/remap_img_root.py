@@ -6,7 +6,8 @@ python3 file2data/coco/remap_img_root.py \
     --coco_file <coco_file> \
     --old_roots <old_root1> <old_root2> \
     --new_root <new_root1> <new_root2>  \
-    --relative_path [relative_path] \
+    --rel2abs_dirs <dir1> <dir2> \
+    --abs2rel_dirs <dir1> <dir2> \
     --output_file <output_file>
 
 # {'/team/drive-1': 18000, '/mnt/lakedata_azure': 1340, '/data_tmp/cloth_wire_data': 23, '/ssd/data_zx': 20637}
@@ -33,8 +34,8 @@ def remap_img_root(
     coco_file: str,
     old_roots: list[str],
     new_roots: list[str],
-    img_dirs: list[str],
-    relative_path: str,
+    rel2abs_dirs: list[str],
+    abs2rel_dirs: list[str],
     output_file: str,
 ) -> None:
     """重映射COCO数据集中图片的根目录路径
@@ -43,6 +44,8 @@ def remap_img_root(
         coco_file: COCO标注文件路径
         old_roots: 原始根目录路径列表
         new_roots: 新的根目录路径列表
+        rel2abs_dirs: 相对路径列表，将相对路径转换为绝对路径
+        abs2rel_dirs: 相对路径列表，将绝对路径统一转换为相对路径，便于更换根目录
         output_file: 输出文件路径
     """
     coco = load_json(coco_file)
@@ -55,7 +58,7 @@ def remap_img_root(
 
         # convert relative path to absolute path
         if not osp.isabs(file_name):
-            for img_dir in img_dirs:
+            for img_dir in rel2abs_dirs:
                 new_file_name = osp.join(img_dir, file_name)
                 if osp.exists(new_file_name):
                     img_info["file_name"] = new_file_name
@@ -78,11 +81,13 @@ def remap_img_root(
                     break
             
             # 将绝对路径统一转换为相对路径，便于更换根目录
-            if relative_path:
+            if abs2rel_dirs:
                 file_name = img_info["file_name"]
-                if file_name.startswith(relative_path):
-                    abs2rel_count += 1
-                    img_info["file_name"] = osp.relpath(file_name, relative_path)
+                for rel_dir in abs2rel_dirs:
+                    if file_name.startswith(rel_dir):
+                        abs2rel_count += 1
+                        img_info["file_name"] = osp.relpath(file_name, rel_dir)
+                        break
 
         # 处理找不到的相对路径
         else:
@@ -94,7 +99,7 @@ def remap_img_root(
     if rel_img_count > 0:
         print(f"final rel_img_count: {rel_img_count}, ratio: {rel_img_count / total_img_count:.2%}")
 
-    if relative_path:
+    if abs2rel_count:
         print(f"final abs2rel_count: {abs2rel_count}, ratio: {abs2rel_count / total_img_count:.2%}")
 
     if osp.dirname(output_file):
@@ -112,17 +117,18 @@ if __name__ == "__main__":
         "--new_roots", type=str, nargs="+", required=True, help="新的根目录路径列表"
     )
     parser.add_argument(
-        "--img_dirs",
+        "--rel2abs_dirs",
         type=str,
         nargs="+",
-        required=True,
-        help="转换相对路径的图片根目录列表",
+        required=False,
+        default=[],
+        help="将相对路径转换为绝对路径的图片根目录列表",
     )
-    parser.add_argument("--relative_path", type=str, required=False, default="", help="相对路径")
+    parser.add_argument("--abs2rel_dirs", type=str, nargs="+", required=False, default=[], help="绝对路径列表，将绝对路径统一转换为相对路径，便于更换根目录")
     parser.add_argument("--output_file", type=str, required=True, help="输出文件路径")
     args = parser.parse_args()
 
     remap_img_root(
-        args.coco_file, args.old_roots, args.new_roots, args.img_dirs, args.relative_path, args.output_file
+        args.coco_file, args.old_roots, args.new_roots, args.rel2abs_dirs, args.abs2rel_dirs, args.output_file
     )
     print(f"保存到 {args.output_file}")
