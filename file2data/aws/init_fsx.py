@@ -11,7 +11,7 @@ python3 file2data/aws/init_fsx.py \
 """
 
 import argparse
-from file2data import load_json, save_json
+from file2data import load_json, save_json, load_file
 from file2data.utils import parallelise
 import os.path as osp
 import subprocess
@@ -31,7 +31,33 @@ def lfs_restore(img_path: str) -> dict:
 def init_fsx(coco_file: str, origin_img_dir: str, fsx_img_dir: str, output_file: str, num_workers: int) -> None:
     """初始化fsx文件系统（lustre）
     """
-    coco_data = load_json(coco_file)
+    if coco_file.endswith('.json'):
+        coco_data = load_json(coco_file)
+    elif coco_file.endswith('.txt'):
+        coco_data = {}
+        coco_data['images'] = []
+        # support image and other file
+        img_path_list = load_file(coco_file)
+        for idx, img_path in enumerate(img_path_list):
+            coco_data['images'].append({
+                'id': idx,
+                'file_name': img_path,
+            })
+    elif osp.isdir(coco_file):
+        # recursive search all files in directory, support image and other file
+        coco_data = {}
+        coco_data['images'] = []
+        idx = 0
+        for root, dirs, files in os.walk(coco_file):
+            for file in files:
+                coco_data['images'].append({
+                    'id': idx,
+                    'file_name': osp.join(root, file),
+                })
+                idx += 1
+    else:
+        raise ValueError(f"invalid coco file: {coco_file}")
+    
     success_count = 0
     fail_count = 0
 
