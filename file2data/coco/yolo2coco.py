@@ -181,9 +181,17 @@ def yolo_to_coco(
     labels_path = os.path.join(root_dir, label_dir)
 
     # 加载类别名称
-    if class_names_file and os.path.exists(class_names_file):
-        with open(class_names_file, "r") as f:
-            class_names = [line.strip() for line in f.readlines()]
+    if class_names_file:
+        if class_names_file.endswith('.txt') and os.path.exists(class_names_file):
+            with open(class_names_file, "r") as f:
+                class_names = [line.strip() for line in f.readlines()]
+        else:
+            if ',' in class_names_file:
+                class_names = class_names_file.split(',')
+            else:
+                class_names = class_names_file.split()
+            
+            print(f"class_names: {class_names}")
     else:
         raise ValueError("类别名称文件不存在")
 

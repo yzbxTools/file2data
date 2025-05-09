@@ -7,7 +7,8 @@ python3 file2data/aws/init_fsx.py \
     --origin_img_dir <origin_img_root> \
     --fsx_img_dir <fsx_img_root> \
     --output_file <output_file> \
-    --num_workers <num_workers>
+    --num_workers <num_workers> \
+    --sudo
 """
 
 import argparse
@@ -17,10 +18,15 @@ import os.path as osp
 import subprocess
 import os
 
+SUDO = False
 
 def lfs_restore(img_path: str) -> dict:
     """hsm_restore img_path to fsx_img_dir"""
-    cmd = f"lfs hsm_restore '{img_path}'"
+    if SUDO:
+        cmd = f"sudo lfs hsm_restore '{img_path}'"
+    else:
+        cmd = f"lfs hsm_restore '{img_path}'"
+
     try:
         subprocess.run(cmd, shell=True, check=True)
     except Exception as e:
@@ -101,5 +107,10 @@ if __name__ == "__main__":
     parser.add_argument("--fsx_img_dir", type=str, default="/", help="fsx image directory, used for relative path and absolute path")
     parser.add_argument("--output_file", type=str, default=None, help="output coco file, if not provided, the coco file will not be saved")
     parser.add_argument("--num_workers", type=int, default=8, help="number of workers")
+    parser.add_argument("--sudo", action='store_true', help="use sudo to run lfs commands")
     args = parser.parse_args()
+
+    SUDO = args.sudo
+    if SUDO:
+        print("use sudo to run lfs commands")
     init_fsx(args.coco_file, args.origin_img_dir, args.fsx_img_dir, args.output_file, args.num_workers)
