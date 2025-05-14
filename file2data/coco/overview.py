@@ -11,6 +11,7 @@ import os
 import os.path as osp
 import pandas as pd
 from file2data import load_json
+from pprint import pprint
 
 
 def parse_args():
@@ -22,10 +23,25 @@ def parse_args():
 def analyze_coco(coco_data):
     """分析COCO数据集并返回统计信息"""
     # 检查数据完整性
-    required_keys = ["images", "annotations", "categories"]
-    for key in required_keys:
-        if key not in coco_data:
-            raise ValueError(f"COCO数据集缺少 '{key}' 字段")
+    if isinstance(coco_data, dict):
+        required_keys = ["images", "annotations", "categories"]
+        for key in required_keys:
+            if key not in coco_data:
+                raise ValueError(f"COCO数据集缺少 '{key}' 字段")
+    elif isinstance(coco_data, list):
+        anns = coco_data
+        # static the result in the anns
+        cat_counts = {}
+        for ann in anns:
+            cat_id = ann["category_id"]
+            if cat_id in cat_counts:
+                cat_counts[cat_id] += 1
+            else:
+                cat_counts[cat_id] = 1
+        pprint(cat_counts)
+        raise ValueError('无法再继续分析预测结')
+    else:
+        raise ValueError("无法分析")
 
     results = {}
 
