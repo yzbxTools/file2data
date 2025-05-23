@@ -8,5 +8,4 @@ jsonlines
 loguru
 pyyaml
 thefuzz
-streamlit>=1.22.0
 matplotlib>=3.5.0

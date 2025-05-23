@@ -1,0 +1,7 @@
+sounddevice>=0.4.6
+scipy>=1.10.0
+SpeechRecognition>=3.10.0
+gTTS>=2.3.2
+pydub>=0.25.1
+streamlit>=1.23.0
+wavio>=0.4.3
