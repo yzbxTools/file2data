@@ -12,6 +12,7 @@ import argparse
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 from tqdm import trange
+import datetime
 
 
 class ToyModel(nn.Module):
@@ -32,7 +33,7 @@ class ToyModel(nn.Module):
 def setup(rank, world_size, timeout):
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = "12355"
-    torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=timeout)
+    torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=timeout))
 
 
 def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
