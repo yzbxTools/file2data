@@ -63,9 +63,11 @@ def train(rank, world_size, epochs=10, batch_size=32):
             epoch += 1
             if rank == 0:
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
-            time.sleep(0.05)
+
+            time.sleep(0.01)
     else:
-        for epoch in trange(epochs):
+        tbar = trange(epochs)
+        for epoch in tbar:
             start_time = time.time()
             output = model(x)
             loss = nn.MSELoss()(output, y)
@@ -74,8 +76,8 @@ def train(rank, world_size, epochs=10, batch_size=32):
             optimizer.step()
 
             if rank == 0:
-                print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
-
+                # print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
+                tbar.set_description(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
 
 def main():
     parser = argparse.ArgumentParser()
