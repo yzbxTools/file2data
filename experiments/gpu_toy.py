@@ -38,12 +38,12 @@ def get_free_port():
 
 
 def setup(rank, world_size, timeout, master_addr, master_port):
-    os.environ["MASTER_ADDR"] = master_addr
-    os.environ["MASTER_PORT"] = master_port
+    os.environ["MASTER_ADDR"] = str(master_addr)
+    os.environ["MASTER_PORT"] = str(master_port)
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=timeout))
 
 
-def train(rank, world_size, epochs=10, batch_size=32, timeout=180, master_addr=None, master_port=None):
+def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_port):
     setup(rank, world_size, timeout, master_addr, master_port)
 
     # 创建模型并移动到对应的GPU
@@ -73,8 +73,9 @@ def train(rank, world_size, epochs=10, batch_size=32, timeout=180, master_addr=N
 
             epoch += 1
             if rank == 0:
-                duration = time.time() - start_time
+                duration = time.time() - init_time
                 if duration > 10:
+                    init_time = time.time()
                     print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
 
             time.sleep(0.01)
@@ -98,7 +99,7 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8192, help="批量大小")
     parser.add_argument("--epochs", type=int, default=0, help="训练轮数")
     parser.add_argument("--timeout", type=int, default=10, help="同步超时时间")
-    parser.add_argument("--master-port", type=str, default=str(get_free_port()), help="主节点端口")
+    parser.add_argument("--master-port", type=int, default=get_free_port(), help="主节点端口")
     parser.add_argument("--master-addr", type=str, default="127.0.0.1", help="主节点地址")
     args = parser.parse_args()
 
