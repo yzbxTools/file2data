@@ -29,14 +29,14 @@ class ToyModel(nn.Module):
         return self.net(x)
 
 
-def setup(rank, world_size):
+def setup(rank, world_size, timeout):
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "12355"
-    torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size)
+    torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=timeout)
 
 
-def train(rank, world_size, epochs=10, batch_size=32):
-    setup(rank, world_size)
+def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
+    setup(rank, world_size, timeout)
 
     # 创建模型并移动到对应的GPU
     model = ToyModel().to(rank)
@@ -52,6 +52,7 @@ def train(rank, world_size, epochs=10, batch_size=32):
     if epochs <= 0:
         # run forever
         epoch = 0
+        init_time = time.time()
         while True:
             start_time = time.time()
             output = model(x)
@@ -62,7 +63,9 @@ def train(rank, world_size, epochs=10, batch_size=32):
 
             epoch += 1
             if rank == 0:
-                print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
+                duration = time.time() - start_time
+                if duration > 10:
+                    print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
 
             time.sleep(0.01)
     else:
@@ -82,8 +85,9 @@ def train(rank, world_size, epochs=10, batch_size=32):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpus", type=int, default=[], nargs="+", help="指定运行的GPU编号")
-    parser.add_argument("--batch-size", type=int, default=32, help="批量大小")
-    parser.add_argument("--epochs", type=int, default=10, help="训练轮数")
+    parser.add_argument("--batch-size", type=int, default=8192, help="批量大小")
+    parser.add_argument("--epochs", type=int, default=0, help="训练轮数")
+    parser.add_argument("--timeout", type=int, default=10, help="同步超时时间")
     args = parser.parse_args()
 
     if len(args.gpus) == 0:
@@ -100,7 +104,7 @@ def main():
     print(f"使用 {world_size} 个GPU进行训练")
     mp.spawn(
         train,
-        args=(world_size, args.epochs, args.batch_size),
+        args=(world_size, args.epochs, args.batch_size, args.timeout),
         nprocs=world_size,
         join=True,
     )
