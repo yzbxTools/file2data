@@ -11,6 +11,7 @@ import time
 import argparse
 from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
+from tqdm import trange
 
 
 class ToyModel(nn.Module):
@@ -64,7 +65,7 @@ def train(rank, world_size, epochs=10, batch_size=32):
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
             time.sleep(0.05)
     else:
-        for epoch in range(epochs):
+        for epoch in trange(epochs):
             start_time = time.time()
             output = model(x)
             loss = nn.MSELoss()(output, y)
@@ -72,8 +73,8 @@ def train(rank, world_size, epochs=10, batch_size=32):
             loss.backward()
             optimizer.step()
 
-        if rank == 0:
-            print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
+            if rank == 0:
+                print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
 
 
 def main():

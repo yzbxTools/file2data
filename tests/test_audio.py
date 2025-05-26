@@ -4,16 +4,11 @@ use steamlit to record audio, then process it, convert it to text, finally use t
 
 import streamlit as st
 import sounddevice as sd
-import scipy.io.wavfile as wav
 import wavio
-import numpy as np
 import speech_recognition as sr
 from gtts import gTTS
 import tempfile
 import os
-from pydub import AudioSegment
-from pydub.playback import play
-import io
 
 def record_audio(duration=5, sample_rate=44100, channels=1):
     """录制音频"""
