@@ -13,6 +13,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 from tqdm import trange
 import datetime
+import socket
 
 
 class ToyModel(nn.Module):
@@ -30,14 +31,20 @@ class ToyModel(nn.Module):
         return self.net(x)
 
 
-def setup(rank, world_size, timeout):
-    os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "12355"
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
+
+
+def setup(rank, world_size, timeout, master_addr, master_port):
+    os.environ["MASTER_ADDR"] = master_addr
+    os.environ["MASTER_PORT"] = master_port
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=timeout))
 
 
-def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
-    setup(rank, world_size, timeout)
+def train(rank, world_size, epochs=10, batch_size=32, timeout=180, master_addr=None, master_port=None):
+    setup(rank, world_size, timeout, master_addr, master_port)
 
     # 创建模型并移动到对应的GPU
     model = ToyModel().to(rank)
@@ -60,6 +67,8 @@ def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
             loss = nn.MSELoss()(output, y)
             optimizer.zero_grad()
             loss.backward()
+            # gpu sync
+            torch.distributed.barrier()
             optimizer.step()
 
             epoch += 1
@@ -89,6 +98,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=8192, help="批量大小")
     parser.add_argument("--epochs", type=int, default=0, help="训练轮数")
     parser.add_argument("--timeout", type=int, default=10, help="同步超时时间")
+    parser.add_argument("--master-port", type=str, default=str(get_free_port()), help="主节点端口")
+    parser.add_argument("--master-addr", type=str, default="127.0.0.1", help="主节点地址")
     args = parser.parse_args()
 
     if len(args.gpus) == 0:
@@ -105,7 +116,7 @@ def main():
     print(f"使用 {world_size} 个GPU进行训练")
     mp.spawn(
         train,
-        args=(world_size, args.epochs, args.batch_size, args.timeout),
+        args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_port, args.master_addr),
         nprocs=world_size,
         join=True,
     )
