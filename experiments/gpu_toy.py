@@ -13,6 +13,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 from tqdm import trange
 import datetime
+import socket
 
 
 class ToyModel(nn.Module):
@@ -30,13 +31,19 @@ class ToyModel(nn.Module):
         return self.net(x)
 
 
+def get_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('localhost', 0))
+        return s.getsockname()[1]
+
+
 def setup(rank, world_size, timeout):
     os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "12355"
+    os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", str(get_free_port()))
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=timeout))
 
 
-def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
+def train(rank, world_size, epochs, batch_size, timeout):
     setup(rank, world_size, timeout)
 
     # 创建模型并移动到对应的GPU
@@ -60,12 +67,14 @@ def train(rank, world_size, epochs=10, batch_size=32, timeout=180):
             loss = nn.MSELoss()(output, y)
             optimizer.zero_grad()
             loss.backward()
+            torch.distributed.barrier()
             optimizer.step()
 
             epoch += 1
             if rank == 0:
-                duration = time.time() - start_time
+                duration = time.time() - init_time
                 if duration > 10:
+                    init_time = time.time()
                     print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
 
             time.sleep(0.01)
