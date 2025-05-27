@@ -77,8 +77,7 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
                 if duration > 10:
                     init_time = time.time()
                     print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
-
-            time.sleep(0.01)
+                    time.sleep(0.01)
     else:
         tbar = trange(epochs)
         for epoch in tbar:
@@ -117,7 +116,7 @@ def main():
     print(f"使用 {world_size} 个GPU进行训练")
     mp.spawn(
         train,
-        args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_port, args.master_addr),
+        args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_addr, args.master_port),
         nprocs=world_size,
         join=True,
     )
