@@ -71,13 +71,16 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
             torch.distributed.barrier()
             optimizer.step()
 
-            epoch += 1
             if rank == 0:
+                epoch += 1
                 duration = time.time() - init_time
                 if duration > 10:
                     init_time = time.time()
                     print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
+                    if epoch > 1024 * 1024 * 1024:
+                        epoch=0
                     time.sleep(0.01)
+                    
     else:
         tbar = trange(epochs)
         for epoch in tbar:
@@ -95,9 +98,9 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpus", type=int, default=[], nargs="+", help="指定运行的GPU编号")
-    parser.add_argument("--batch-size", type=int, default=8192, help="批量大小")
-    parser.add_argument("--epochs", type=int, default=0, help="训练轮数")
-    parser.add_argument("--timeout", type=int, default=10, help="同步超时时间")
+    parser.add_argument("--batch-size", type=int, default=1024, help="批量大小")
+    parser.add_argument("--epochs", type=int, default=0, help="训练轮数， 0代表无限循环")
+    parser.add_argument("--timeout", type=int, default=2, help="同步超时时间(秒), 当kill main程序时, 其它程序会超时死亡")
     parser.add_argument("--master-port", type=int, default=get_free_port(), help="主节点端口")
     parser.add_argument("--master-addr", type=str, default="127.0.0.1", help="主节点地址")
     args = parser.parse_args()
