@@ -27,6 +27,7 @@ import numpy as np
 import signal
 import sys
 from tabulate import tabulate
+import pynvml
 
 
 class GPUMonitor:
@@ -49,16 +50,41 @@ class GPUMonitor:
         self.monitor_thread = None
         self.last_print_time = time.time()
         self.last_status = None  # 用于跟踪状态变化
-
+        
+        # 初始化NVML
+        try:
+            pynvml.nvmlInit()
+            self.nvml_initialized = True
+        except pynvml.NVMLError:
+            print("警告：无法初始化NVML，将使用备用方法获取GPU信息")
+            self.nvml_initialized = False
+        
     def get_gpu_memory_usage(self, gpu_id):
         """获取指定GPU的显存使用率"""
+        if self.nvml_initialized:
+            try:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_id)
+                info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                return (info.used / info.total) * 100
+            except pynvml.NVMLError:
+                pass
+        
+        # 备用方法
         with torch.cuda.device(gpu_id):
             return torch.cuda.memory_allocated() / torch.cuda.get_device_properties(gpu_id).total_memory * 100
-
+    
     def get_gpu_utilization(self, gpu_id):
         """获取指定GPU的利用率"""
+        if self.nvml_initialized:
+            try:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(gpu_id)
+                info = pynvml.nvmlDeviceGetUtilizationRates(handle)
+                return info.gpu
+            except pynvml.NVMLError:
+                pass
+        
+        # 备用方法：使用nvidia-smi
         try:
-            # 使用nvidia-smi获取GPU利用率
             import subprocess
             result = subprocess.check_output(
                 f'nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits -i {gpu_id}',
@@ -67,35 +93,35 @@ class GPUMonitor:
             return float(result)
         except:
             return 0.0
-
+        
     def print_gpu_stats(self):
         """打印GPU统计信息表格"""
         headers = ['GPU ID', '显存使用率(%)', 'GPU利用率(%)']
         table_data = []
-
+        
         for gpu_id in self.gpu_ids:
             if len(self.memory_usage[gpu_id]) > 0:
                 avg_memory = np.mean(self.memory_usage[gpu_id])
                 avg_util = np.mean(self.gpu_utilization[gpu_id])
                 table_data.append([gpu_id, f"{avg_memory:.1f}", f"{avg_util:.1f}"])
-
+        
         print("\nGPU使用情况统计:")
         print(tabulate(table_data, headers=headers, tablefmt='grid'))
-
+        
     def monitor_loop(self):
         """监控循环"""
         while not self.should_stop:
             current_time = time.time()
-
+            
             for gpu_id in self.gpu_ids:
                 # 获取显存使用率
                 memory_usage = self.get_gpu_memory_usage(gpu_id)
                 self.memory_usage[gpu_id].append(memory_usage)
-
+                
                 # 获取GPU利用率
                 gpu_util = self.get_gpu_utilization(gpu_id)
                 self.gpu_utilization[gpu_id].append(gpu_util)
-
+                
                 # 检查是否超过阈值
                 if len(self.memory_usage[gpu_id]) == self.window_size:
                     avg_usage = np.mean(self.memory_usage[gpu_id])
@@ -109,25 +135,30 @@ class GPUMonitor:
                             print(f"\n提示：GPU {gpu_id} 显存使用率({avg_usage:.1f}%)已低于恢复阈值({self.recovery_threshold}%)")
                             self.last_status = 'running'
                         self.should_stop = False
-
+            
             # 定期打印统计信息
             if current_time - self.last_print_time >= self.window_size:
                 self.print_gpu_stats()
                 self.last_print_time = current_time
-
+            
             time.sleep(1)
-
+    
     def start(self):
         """启动监控"""
         self.monitor_thread = threading.Thread(target=self.monitor_loop)
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
-
+    
     def stop(self):
         """停止监控"""
         self.should_stop = True
         if self.monitor_thread:
             self.monitor_thread.join()
+        if self.nvml_initialized:
+            try:
+                pynvml.nvmlShutdown()
+            except:
+                pass
 
 class ToyModel(nn.Module):
     def __init__(self):
