@@ -240,8 +240,8 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
                 output = model(x)
                 loss = nn.MSELoss()(output, y)
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # loss.backward()
+                # optimizer.step()
 
                 if rank == 0:
                     epoch += 1
