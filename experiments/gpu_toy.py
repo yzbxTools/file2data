@@ -282,7 +282,7 @@ def main():
     try:
         mp.spawn(
             train,
-            args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_port, args.master_addr,
+            args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_addr, args.master_port,
                   args.monitor_window, args.monitor_threshold, args.monitor_recovery_threshold),
             nprocs=world_size,
             join=True,
