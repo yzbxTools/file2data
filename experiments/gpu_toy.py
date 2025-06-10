@@ -3,11 +3,11 @@
 其中运行的GPU编号可以指定，也可以自动选择
 
 特色功能:
-1. 当指定时间窗口内(默认1min内， 每秒检查一次)系统的显存平均使用率超过指定值(默认为30%时), 则自动停止训练。反之则继续训练
-2. 对每块GPU单独进行监控，当某块GPU的显存使用率超过指定值时，则自动停止训练。反之则继续训练
+1. 当指定时间窗口内(默认1min内， 每秒检查一次)系统的GPU平均用率超过指定值(默认为80%)或显存使用率超过指定值(默认为95%)时, 则自动停止训练。反之则继续训练
+2. 对每块GPU单独进行监控，当某块GPU的利用率超过指定值时，则自动停止训练。反之则继续训练
 3. 当终止主进程时，所有子进程也会自动停止
-4. 每隔一个时间窗口，以表格的形式，打印一次平均的GPU显存使用率 及 GPU利用率
-5. 当GPU显存低于指定值时，自动恢复训练
+4. rank=0时，每隔一个时间窗口，以表格的形式，打印所有GPU的平均显存使用率 及 GPU利用率
+5. 当GPU利用率低于指定值时(80%)且显存使用率低于指定值时(95%)，自动恢复训练
 """
 
 import torch
@@ -31,22 +31,24 @@ import pynvml
 
 
 class GPUMonitor:
-    def __init__(self, window_size=60, threshold=30, recovery_threshold=20, gpu_ids=None):
+    def __init__(self, window_size=60, gpu_threshold=80, memory_threshold=95, rank=0):
         """
         初始化GPU监控器
         Args:
             window_size: 时间窗口大小（秒）
-            threshold: 显存使用率阈值（百分比）
-            recovery_threshold: 恢复训练的显存使用率阈值（百分比）
-            gpu_ids: 要监控的GPU ID列表
+            gpu_threshold: GPU利用率阈值（百分比）
+            memory_threshold: 显存使用率阈值（百分比）
+            rank: 当前进程的rank
         """
         self.window_size = window_size
-        self.threshold = threshold
-        self.recovery_threshold = recovery_threshold
-        self.gpu_ids = gpu_ids or list(range(torch.cuda.device_count()))
+        self.gpu_threshold = gpu_threshold
+        self.memory_threshold = memory_threshold
+        self.rank = rank
+        self.gpu_ids = [rank] if rank > 0 else list(range(torch.cuda.device_count()))
         self.memory_usage = {gpu_id: deque(maxlen=window_size) for gpu_id in self.gpu_ids}
         self.gpu_utilization = {gpu_id: deque(maxlen=window_size) for gpu_id in self.gpu_ids}
-        self.should_stop = False
+        self.should_stop = False    # GPU监控器是否停止
+        self.can_train = True       # 当前GPU是否可以训练
         self.monitor_thread = None
         self.last_print_time = time.time()
         self.last_status = None  # 用于跟踪状态变化
@@ -109,10 +111,9 @@ class GPUMonitor:
         print(tabulate(table_data, headers=headers, tablefmt='grid'))
         
     def monitor_loop(self):
-        """监控循环"""
+        """监控循环, 每隔1秒检查一次，后台进行"""
         while not self.should_stop:
             current_time = time.time()
-            
             for gpu_id in self.gpu_ids:
                 # 获取显存使用率
                 memory_usage = self.get_gpu_memory_usage(gpu_id)
@@ -121,23 +122,33 @@ class GPUMonitor:
                 # 获取GPU利用率
                 gpu_util = self.get_gpu_utilization(gpu_id)
                 self.gpu_utilization[gpu_id].append(gpu_util)
-                
+            
                 # 检查是否超过阈值
-                if len(self.memory_usage[gpu_id]) == self.window_size:
-                    avg_usage = np.mean(self.memory_usage[gpu_id])
-                    if avg_usage > self.threshold:
+                if len(self.memory_usage[gpu_id]) >= self.window_size:
+                    avg_memory = np.mean(self.memory_usage[gpu_id])
+                    avg_util = np.mean(self.gpu_utilization[gpu_id])
+                    
+                    if gpu_id != self.rank:
+                        continue
+
+                    # 检查是否需要停止训练
+                    if avg_util > self.gpu_threshold or avg_memory > self.memory_threshold:
                         if self.last_status != 'stopped':
-                            print(f"\n警告：GPU {gpu_id} 过去{self.window_size}秒内平均显存使用率({avg_usage:.1f}%)超过阈值({self.threshold}%)")
+                            if avg_util > self.gpu_threshold:
+                                print(f"\n警告：GPU {gpu_id} 过去{self.window_size}秒内平均GPU利用率({avg_util:.1f}%)超过阈值({self.gpu_threshold}%)")
+                            if avg_memory > self.memory_threshold:
+                                print(f"\n警告：GPU {gpu_id} 过去{self.window_size}秒内平均显存使用率({avg_memory:.1f}%)超过阈值({self.memory_threshold}%)")
                             self.last_status = 'stopped'
-                        self.should_stop = True
-                    elif avg_usage < self.recovery_threshold:
+                        self.can_train = False
+                    # 检查是否可以恢复训练
+                    elif avg_util < self.gpu_threshold and avg_memory < self.memory_threshold:
                         if self.last_status != 'running':
-                            print(f"\n提示：GPU {gpu_id} 显存使用率({avg_usage:.1f}%)已低于恢复阈值({self.recovery_threshold}%)")
+                            print(f"\n提示：GPU {gpu_id} 显存使用率({avg_memory:.1f}%)和GPU利用率({avg_util:.1f}%)已低于阈值")
                             self.last_status = 'running'
-                        self.should_stop = False
+                        self.can_train = True
             
             # 定期打印统计信息
-            if current_time - self.last_print_time >= self.window_size:
+            if self.rank == 0 and current_time - self.last_print_time >= self.window_size:
                 self.print_gpu_stats()
                 self.last_print_time = current_time
             
@@ -187,15 +198,15 @@ def setup(rank, world_size, timeout, master_addr, master_port):
     torch.distributed.init_process_group("nccl", rank=rank, world_size=world_size, timeout=datetime.timedelta(seconds=timeout))
 
 
-def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_port, monitor_window=60, monitor_threshold=30, monitor_recovery_threshold=20):
+def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_port, monitor_window=60, gpu_threshold=80, memory_threshold=95):
     # 设置信号处理
     def signal_handler(signum, frame):
         print(f"\n进程 {rank} 收到终止信号，正在停止...")
         sys.exit(0)
-
+    
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-
+    
     setup(rank, world_size, timeout, master_addr, master_port)
 
     # 创建模型并移动到对应的GPU
@@ -211,12 +222,13 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
     # 初始化GPU监控器
     monitor = GPUMonitor(
         window_size=monitor_window,
-        threshold=monitor_threshold,
-        recovery_threshold=monitor_recovery_threshold,
-        gpu_ids=[rank]
+        gpu_threshold=gpu_threshold,
+        memory_threshold=memory_threshold,
+        rank=rank
     )
     monitor.start()
 
+    # 当前rank 是否在训练
     on_training = True
     try:
         # 训练循环
@@ -226,17 +238,17 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
             init_time = time.time()
             while True:
                 start_time = time.time()
-                if monitor.should_stop:
+                if not monitor.can_train:
                     if on_training:
                         print(f"\nGPU {rank} 暂停训练")
                         on_training = False
-                    time.sleep(1)  # 暂停时降低检查频率
+                    time.sleep(1)  # 暂停训练时sleep 1s，等待恢复训练信号
                     continue
-
+                
                 if not on_training:
                     print(f"\nGPU {rank} 恢复训练")
                     on_training = True
-
+                
                 output = model(x)
                 loss = nn.MSELoss()(output, y)
                 optimizer.zero_grad()
@@ -245,37 +257,38 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
 
                 epoch += 1
                 duration = time.time() - init_time
-                if duration > 10:
+                if duration > monitor_window:
                     init_time = time.time()
                     if rank == 0:
-                        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
+                        # 打印当前时间 hh:mm:ss
+                        print(f"Epoch {epoch+1}/{epochs}, Current Time: {datetime.datetime.now().strftime('%H:%M:%S')}, Duration: {duration:.2f}s")
                     time.sleep(0.01)
 
                 if epoch > 1024 * 1024 * 1024:
-                        epoch = 0
+                    epoch = 0
         else:
             tbar = trange(epochs)
             for epoch in tbar:
                 start_time = time.time()
-                if monitor.should_stop:
+                if not monitor.can_train:
                     if on_training:
                         print(f"\nGPU {rank} 暂停训练")
                         on_training = False
-                    time.sleep(1)  # 暂停时降低检查频率
+                    time.sleep(1)  # 暂停时sleep 1s，等待恢复训练信号
                     continue
-
+                
                 if not on_training:
                     print(f"\nGPU {rank} 恢复训练")
                     on_training = True
-
+                
                 output = model(x)
                 loss = nn.MSELoss()(output, y)
                 optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+                # loss.backward()
+                # optimizer.step()
 
                 if rank == 0:
-                    tbar.set_description(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s")
+                    tbar.set_description(f"Epoch {epoch+1}/{epochs}")
     finally:
         monitor.stop()
         # 确保所有进程同步退出
@@ -290,8 +303,8 @@ def main():
     parser.add_argument("--master-port", type=int, default=get_free_port(), help="主节点端口")
     parser.add_argument("--master-addr", type=str, default="127.0.0.1", help="主节点地址")
     parser.add_argument("--monitor-window", type=int, default=60, help="显存监控时间窗口（秒）")
-    parser.add_argument("--monitor-threshold", type=float, default=30, help="显存使用率阈值（百分比）")
-    parser.add_argument("--monitor-recovery-threshold", type=float, default=20, help="恢复训练的显存使用率阈值（百分比）")
+    parser.add_argument("--gpu-threshold", type=float, default=80, help="GPU利用率阈值（百分比）")
+    parser.add_argument("--memory-threshold", type=float, default=95, help="显存使用率阈值（百分比）")
     args = parser.parse_args()
 
     if len(args.gpus) == 0:
@@ -306,15 +319,15 @@ def main():
     # 设置可见的GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, args.gpus))
     print(f"使用 {world_size} 个GPU进行训练")
-
+    
     # 设置进程启动方法
     mp.set_start_method('spawn', force=True)
-
+    
     try:
         mp.spawn(
             train,
-            args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_addr, args.master_port,
-                  args.monitor_window, args.monitor_threshold, args.monitor_recovery_threshold),
+            args=(world_size, args.epochs, args.batch_size, args.timeout, args.master_addr, args.master_port, 
+                  args.monitor_window, args.gpu_threshold, args.memory_threshold),
             nprocs=world_size,
             join=True,
         )
