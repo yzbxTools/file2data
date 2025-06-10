@@ -243,16 +243,16 @@ def train(rank, world_size, epochs, batch_size, timeout, master_addr, master_por
                 # loss.backward()
                 # optimizer.step()
 
-                if rank == 0:
-                    epoch += 1
-                    duration = time.time() - init_time
-                    if duration > 10:
-                        init_time = time.time()
+                epoch += 1
+                duration = time.time() - init_time
+                if duration > 10:
+                    init_time = time.time()
+                    if rank == 0:
                         print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Time: {time.time() - start_time:.2f}s, Duration: {duration:.2f}s")
+                    time.sleep(0.01)
 
-                    if epoch > 1024 * 1024 * 1024:
+                if epoch > 1024 * 1024 * 1024:
                         epoch = 0
-                time.sleep(0.01)
         else:
             tbar = trange(epochs)
             for epoch in tbar:
