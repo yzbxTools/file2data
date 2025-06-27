@@ -39,7 +39,7 @@ def lfs_play(file_path: str, sudo: bool, app: str) -> dict:
         cmd = f"lfs hsm_archive '{file_path}'"
     else:
         raise ValueError(f"invalid app: {app}")
-    
+
     if sudo:
         cmd = f"sudo {cmd}"
     try:
@@ -55,12 +55,12 @@ def play_fsx(fsx_dir: str, app: str, sudo: bool, num_workers: int) -> None:
     for root, dirs, files in os.walk(fsx_dir):
         for file in files:
             fsx_files.append(osp.join(root, file))
-    
+
     if sudo:
         fn = partial(lfs_play, sudo=True, app=app)
     else:
         fn = partial(lfs_play, sudo=False, app=app)
-    
+
     results = parallelise(fn, fsx_files, num_workers=num_workers)
     success_count = 0
     total_count = len(results)
@@ -72,9 +72,12 @@ def play_fsx(fsx_dir: str, app: str, sudo: bool, num_workers: int) -> None:
             failed_files.append(result['file_path'])
             if len(failed_files) < 3:
                 print(f"error: {result['error']}, file_path: {result['file_path']}")
-    
-    success_rate = round(success_count / total_count, 4)
-    print(f"success_count: {success_count}, total_count: {total_count}, success_rate: {success_rate}")
+
+    if total_count > 0:
+        success_rate = round(success_count / total_count, 4)
+        print(f"success_count: {success_count}, total_count: {total_count}, success_rate: {success_rate}")
+    else:
+        print("No files found to process.")
 
     if len(failed_files) > 0:
         with open('failed_files.txt', 'w') as f:
@@ -85,7 +88,7 @@ def play_fsx(fsx_dir: str, app: str, sudo: bool, num_workers: int) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--fsx_dir", type=str, default="/", help="fsx directory to play")
-    parser.add_argument("--app", type=str, default="init", choices=['init', 'release', 'restore', 'archive', 'export', 'import'], help="app name")
+    parser.add_argument("--app", type=str, default="init", choices=['init', 'release', 'restore', 'archive', 'export', 'import'], help="app name, init=restore=import, archive=export")
     parser.add_argument("--sudo", action='store_true', help="use sudo to run lfs commands")
     parser.add_argument("--num_workers", type=int, default=os.cpu_count()//2, help="number of workers")
     args = parser.parse_args()
